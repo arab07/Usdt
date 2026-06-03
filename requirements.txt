@@ -1,4 +1,3 @@
-Flask
-pyTelegramBotAPI
-requests
-gunicorn
+pyTelegramBotAPI==4.18.0
+requests==2.31.0
+fpdf2==2.7.9
